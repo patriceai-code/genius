@@ -1,0 +1,62 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Virtual Environment
+.venv/
+venv/
+ENV/
+env/
+
+# Environment Variables & Secrets (CRITICAL: NEVER COMMIT SECRETS)
+.env
+.env.local
+.env.*.local
+*.pem
+*.key
+
+# Data & SQLite
+*.db
+*.sqlite
+*.sqlite3
+data/
+*.wav
+
+# IDE / Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# Testing & Coverage
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Logs
+*.log
+
+# Internal Planning Documents (kept locally, excluded from repo)
+*MASTER_PLAN*
+
