@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>GENIUS — Alexa+ Device Simulator</title>
+  <link rel="stylesheet" href="styles.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+  <div class="device-frame">
+    <!-- Mandatory Simulator Notice Header (Never Hidden) -->
+    <header class="simulator-header">
+      <div class="simulator-tag">
+        <span class="pulse-dot"></span>
+        <strong>ALEXA+ PREVIEW DEVICE SIMULATOR</strong>
+        <span class="sub-tag">Spec 2025-11-25 · Streamable HTTP & SSE</span>
+      </div>
+      <div class="server-status" id="server-status">Connecting to MCP...</div>
+    </header>
+
+    <!-- Main Display Surface -->
+    <main class="device-screen">
+      <!-- Unprompted Proactive Notification Banner (Server-Initiated Push) -->
+      <section id="proactive-banner" class="proactive-banner hidden">
+        <div class="banner-header">
+          <span class="banner-badge">PROACTIVE FOLLOW-UP</span>
+          <span class="banner-time" id="banner-timestamp">Just now</span>
+        </div>
+        <div class="banner-body">
+          <h3 id="banner-title">Home Maintenance Notice</h3>
+          <p id="banner-message">Your CO detector replacement arrived today. Is the hallway unit still chirping?</p>
+        </div>
+        <div class="banner-actions" id="banner-actions">
+          <button class="btn btn-primary" onclick="handleProactiveAction('walkthrough')">Walk me through it</button>
+          <button class="btn btn-ghost" onclick="handleProactiveAction('dismiss')">Dismiss</button>
+        </div>
+      </section>
+
+      <!-- Center Conversation & Evidence Feed -->
+      <div class="conversation-container">
+        <div class="agent-avatar-bar">
+          <div class="alexa-glow"></div>
+          <div class="title-group">
+            <h1>GENIUS</h1>
+            <p>Graph Engine for Networked Infrastructure Understanding & Service</p>
+          </div>
+        </div>
+
+        <div id="chat-thread" class="chat-thread">
+          <div class="message assistant-message">
+            <div class="message-sender">GENIUS (World Model)</div>
+            <div class="message-text">
+              I am monitoring your home's infrastructure graph. You can play a chirp sound, check home health, or test tool calls. Acoustic processing is ephemeral by design—raw audio is strictly discarded in flight.
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Action & Simulation Bar -->
+      <div class="control-deck">
+        <div class="deck-title">Interactive Demo Controls</div>
+        <div class="deck-buttons">
+          <button class="btn btn-action" onclick="simulateChirp()">
+            <span class="icon">🔊</span> Simulate 3:14 AM Chirp
+          </button>
+          <button class="btn btn-action" onclick="fetchHomeHealth()">
+            <span class="icon">🏥</span> Get Home Health
+          </button>
+          <button class="btn btn-action" onclick="simulateDelivery()">
+            <span class="icon">📦</span> Trigger Proactive Push
+          </button>
+          <button class="btn btn-action" onclick="openPrivacyInspector()">
+            <span class="icon">🛡️</span> Privacy Surface
+          </button>
+          <button class="btn btn-action" onclick="toggleToolExplorer()">
+            <span class="icon">⚙️</span> MCP Tools (7)
+          </button>
+        </div>
+      </div>
+    </main>
+
+    <!-- Slide-over: MCP Tool Explorer & Direct Call -->
+    <aside id="tool-explorer" class="drawer hidden">
+      <div class="drawer-header">
+        <h2>Registered MCP Tools</h2>
+        <button class="close-btn" onclick="toggleToolExplorer()">&times;</button>
+      </div>
+      <div class="drawer-content">
+        <p class="drawer-sub">Self-hosted FastMCP endpoints via Streamable HTTP (spec 2025-11-25)</p>
+        <div id="tools-list-container" class="tools-grid">
+          <!-- Dynamically populated -->
+        </div>
+      </div>
+    </aside>
+
+    <!-- Slide-over: Privacy & Data Provenance Inspector -->
+    <aside id="privacy-inspector" class="drawer hidden">
+      <div class="drawer-header">
+        <h2>What Does GENIUS Know?</h2>
+        <button class="close-btn" onclick="openPrivacyInspector()">&times;</button>
+      </div>
+      <div class="drawer-content">
+        <div class="privacy-badge-box">
+          <div class="badge-row">
+            <span class="status-pill green">Zero Raw Audio Persistence</span>
+            <span class="status-pill blue">Verified Provenance Required</span>
+          </div>
+          <p class="privacy-statement">Every fact in the Home Graph tracks its provenance source. Acoustic analysis runs FFT in-flight and discards raw audio prior to response generation.</p>
+        </div>
+        <h3>Registered Entities & Provenance</h3>
+        <div id="entities-container" class="entities-list">
+          <!-- Populated from list_entities -->
+        </div>
+      </div>
+    </aside>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
