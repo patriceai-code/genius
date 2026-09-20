@@ -37,8 +37,9 @@ env/
 *.db
 *.sqlite
 *.sqlite3
-data/
 *.wav
+!tests/clips/*.wav
+
 
 # IDE / Editor
 .vscode/
