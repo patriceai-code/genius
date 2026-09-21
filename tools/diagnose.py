@@ -5,6 +5,9 @@ Identifies hardware device, failure state, severity, and generates an action pro
 """
 
 from typing import Dict, Any, Optional
+import os
+
+from audio.matcher import match_acoustic_features
 
 
 def register_diagnose(server):
@@ -22,51 +25,47 @@ def register_diagnose(server):
         """
         Evaluates acoustic signatures against device registry.
         """
-        # Kidde CO end-of-life detection pattern (30s interval, ~3200Hz, 80ms)
-        if 25.0 <= interval_s <= 35.0:
-            device_class = "co_detector"
-            brand = "Kidde"
-            meaning = "end_of_life"
-            severity = "critical"
-            confidence = 0.98
-            suggested_action = "replace_unit;propose_purchase"
-            explanation = "Your carbon monoxide detector has reached its 7-10 year end-of-life date. It is chirping every 30 seconds to alert you that the sensor itself has expired, not just the battery."
-            entity_id = "ent_co_hallway"
-        elif 40.0 <= interval_s <= 50.0:
-            device_class = "smoke_detector"
-            brand = "First Alert"
-            meaning = "low_battery"
-            severity = "warning"
-            confidence = 0.95
-            suggested_action = "replace_battery;walkthrough"
-            explanation = "Your smoke alarm is signaling a low 9V backup battery with a single 45-second chirp."
-            entity_id = "ent_smoke_kitchen"
-        else:
-            device_class = "unknown_device"
-            brand = "Unknown"
-            meaning = "unrecognized_cadence"
-            severity = "info"
-            confidence = 0.40
-            suggested_action = "inspect_manually"
-            explanation = f"Detected chirp cadence of {interval_s}s at {peak_freq_hz}Hz. No exact manufacturer signature match found."
-            entity_id = "ent_unknown_01"
+        match = match_acoustic_features(interval_s, peak_freq_hz, duration_ms)
+
+        if not match:
+            return {
+                "entity_id": "ent_unknown",
+                "device_class": "unknown",
+                "brand": "Unknown",
+                "location": location,
+                "meaning": "unrecognized_cadence",
+                "severity": "info",
+                "confidence": 0.0,
+                "spoken_summary": "I heard a sound, but it does not match any known device error codes in the library.",
+                "proposal": None
+            }
+
+        entity_id = f"ent_{match.device_class}_{location.lower()}"
+        match_dict = match.to_dict(location=location)
+
+        proposal_kind = "order_replacement" if match.meaning == "end_of_life" else "replace_battery"
+        proposal_action = "Order Replacement Unit ($34.99)" if match.meaning == "end_of_life" else "Order 9V Batteries / Walkthrough"
+
+        proposal = {
+            "id": f"prop_{match.device_class}_{match.meaning[:8]}_01",
+            "kind": proposal_kind,
+            "status": "proposed",
+            "title": proposal_action,
+            "device": f"{match.brand} {match.device_class.replace('_', ' ').title()}",
+            "requires_confirmation": True
+        }
 
         return {
             "entity_id": entity_id,
-            "device_class": device_class,
-            "brand": brand,
+            "device_class": match.device_class,
+            "brand": match.brand,
             "location": location,
-            "meaning": meaning,
-            "severity": severity,
-            "confidence": confidence,
-            "recommended_action": suggested_action,
-            "spoken_summary": explanation,
-            "proposal": {
-                "id": "prop_replace_co_001",
-                "kind": "order_replacement",
-                "status": "proposed",
-                "device": f"{brand} {device_class.replace('_', ' ').title()}",
-                "requires_confirmation": True
-            },
-            "source_provenance": "manufacturer_manual:kidde.com/manuals/kn-copp-3"
+            "meaning": match.meaning,
+            "severity": match.severity,
+            "confidence": match.confidence,
+            "recommended_action": match.action,
+            "spoken_summary": match_dict["spoken_summary"],
+            "proposal": proposal,
+            "source_provenance": f"manufacturer_manual:{match.source_url}",
+            "expected_specs": match_dict["expected_specs"]
         }
