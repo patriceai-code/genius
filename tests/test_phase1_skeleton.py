@@ -77,7 +77,7 @@ async def test_api_call_diagnose_and_confirm():
         # 2. Confirm action
         conf_res = await client.post("/api/call", json={
             "name": "confirm_action",
-            "arguments": {"proposal_id": "prop_replace_co_001", "confirmed": True}
+            "arguments": {"proposal_id": result_payload["proposal"]["id"], "confirmed": True}
         })
         assert conf_res.status_code == 200
         conf_data = conf_res.json()

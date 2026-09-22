@@ -1,12 +1,11 @@
 """
 Tool: record_incident
-Records a diagnostic incident or manual event into the Home Graph.
+Records a diagnostic incident or manual event into the persistent Home Graph.
 Enforces data provenance on every write.
 """
 
 from typing import Dict, Any, Optional
-import uuid
-import datetime
+from graph.store import GRAPH_STORE
 
 
 def register_record_incident(server):
@@ -24,16 +23,23 @@ def register_record_incident(server):
         """
         Inserts incident into the graph ledger.
         """
-        incident_id = f"inc_{datetime.datetime.now().strftime('%Y%m%d')}_{uuid.uuid4().hex[:6]}"
-        timestamp = datetime.datetime.now(datetime.timezone.utc).isoformat()
+        target_entity = entity_id or "ent_unassigned"
+        incident = GRAPH_STORE.record_incident(
+            entity_id=target_entity,
+            diagnosis=description,
+            evidence_ref=evidence_ref,
+            severity=severity,
+            confidence=1.0,
+            provenance=provenance
+        )
 
         return {
-            "incident_id": incident_id,
-            "entity_id": entity_id or "ent_unassigned",
-            "description": description,
-            "severity": severity,
-            "evidence_ref": evidence_ref,
-            "provenance": provenance,
-            "recorded_at": timestamp,
+            "incident_id": incident["incident_id"],
+            "entity_id": incident["entity_id"],
+            "description": incident["diagnosis"],
+            "severity": incident["severity"],
+            "evidence_ref": incident["evidence_ref"],
+            "provenance": incident["provenance"],
+            "recorded_at": incident["created_at"],
             "status": "active"
         }

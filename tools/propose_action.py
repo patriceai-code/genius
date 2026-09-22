@@ -1,13 +1,12 @@
 """
 Tool: propose_action
-Creates an actionable proposal.
+Creates an actionable proposal in the Home Graph.
 ARCHITECTURAL RULE: Never auto-acts. All physical or external actions
 must be proposed first and require explicit user confirmation.
 """
 
 from typing import Dict, Any, Optional
-import uuid
-import datetime
+from graph.store import GRAPH_STORE
 
 
 def register_propose_action(server):
@@ -23,20 +22,24 @@ def register_propose_action(server):
         incident_id: Optional[str] = None
     ) -> Dict[str, Any]:
         """
-        Registers a proposed action in the graph.
+        Registers a proposed action in the persistent Home Graph.
         """
-        proposal_id = f"prop_{uuid.uuid4().hex[:8]}"
-        timestamp = datetime.datetime.now(datetime.timezone.utc).isoformat()
+        enriched_payload = {**payload, "title": title, "description": description}
+        proposal = GRAPH_STORE.create_proposal(
+            incident_id=incident_id,
+            kind=kind,
+            payload=enriched_payload
+        )
 
         return {
-            "proposal_id": proposal_id,
+            "proposal_id": proposal["proposal_id"],
             "incident_id": incident_id,
             "kind": kind,
             "title": title,
             "description": description,
             "payload": payload,
             "status": "proposed",
-            "created_at": timestamp,
+            "created_at": proposal["created_at"],
             "requires_user_confirmation": True,
             "trust_policy": "never_auto_act_enforced"
         }
