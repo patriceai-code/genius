@@ -235,6 +235,15 @@ async function simulateDelivery() {
   }
 }
 
+// C2. Simulate Proactive Freeze Alert
+async function simulateFreeze() {
+  try {
+    await fetch(`${API_BASE}/simulate/freeze?temp_f=24.0`, { method: "POST" });
+  } catch (err) {
+    console.error("Freeze alert simulation failed:", err);
+  }
+}
+
 // D. Confirm Action (Propose -> Confirm Gate)
 async function confirmActionDirect(proposalId) {
   try {
@@ -264,9 +273,19 @@ function handleProactiveAction(actionId, label) {
     appendChatMessage("assistant", "Step 1: Twist the old Kidde unit counter-clockwise from its mounting bracket. Step 2: Unplug the wiring harness. Step 3: Plug the harness into the new 10-year sealed unit and twist clockwise until it clicks.");
     speakMessage("Twist the old unit counter-clockwise, unplug the wiring harness, and connect your new unit.");
     dismissBanner();
+  } else if (actionId === "set_temp_68") {
+    appendChatMessage("user", "Set thermostat to 68°F");
+    appendChatMessage("assistant", "Thermostat set to 68°F. Carrier furnace active to protect basement pipes from freeze damage.");
+    speakMessage("Thermostat set to 68 degrees to protect against the freeze.");
+    dismissBanner();
   } else {
     dismissBanner();
   }
+}
+
+function toggleConsent(category, isEnabled) {
+  const status = isEnabled ? "enabled" : "disabled";
+  appendChatMessage("assistant", `Privacy Setting Updated: ${category.toUpperCase()} has been ${status}.`);
 }
 
 function dismissBanner() {

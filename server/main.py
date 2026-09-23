@@ -125,32 +125,18 @@ async def call_tool_direct(request: Request):
         return JSONResponse({"status": "error", "error": str(e)}, status_code=400)
 
 
+from proactive.transports.sse import SSE_BROADCASTER
+from proactive.engine import PROACTIVE_ENGINE
+
+
 # SSE Proactive Push Endpoint for Alexa+ Simulator
 
 @app.get("/events")
 async def sse_event_stream(request: Request):
     """Server-Sent Events endpoint pushing unprompted home notifications to the tablet client."""
-    queue: asyncio.Queue = asyncio.Queue()
-    proactive_subscribers.add(queue)
-
-    async def event_generator() -> AsyncGenerator[str, None]:
-        try:
-            # Initial handshake event
-            yield f"data: {json.dumps({'type': 'genius.connected', 'message': 'GENIUS Proactive SSE Channel Active', 'timestamp': 'now'})}\n\n"
-            while True:
-                if await request.is_disconnected():
-                    break
-                try:
-                    data = await asyncio.wait_for(queue.get(), timeout=15.0)
-                    yield data
-                except asyncio.TimeoutError:
-                    # Keep-alive heartbeat
-                    yield ": ping\n\n"
-        finally:
-            proactive_subscribers.discard(queue)
-
+    queue = SSE_BROADCASTER.subscribe()
     return StreamingResponse(
-        event_generator(),
+        SSE_BROADCASTER.stream_for_request(queue),
         media_type="text/event-stream",
         headers={
             "Cache-Control": "no-cache",
@@ -169,6 +155,15 @@ async def trigger_chirp_simulation(request: Request):
     interval = body.get("interval_s", 30.0)
     res = await mcp_server.call_tool("diagnose", {"interval_s": interval, "location": "hallway"})
     
+    # Extract diagnosis result text
+    tool_text = [c.text for c in getattr(res, "content", [])][0] if getattr(res, "content", None) else "{}"
+    try:
+        parsed_diag = json.loads(tool_text)
+    except Exception:
+        parsed_diag = {}
+
+    prop_id = parsed_diag.get("proposal", {}).get("id", "prop_replace_co_001") if isinstance(parsed_diag, dict) else "prop_replace_co_001"
+
     # Broadcast incident detection event
     event = {
         "type": "genius.event",
@@ -177,34 +172,32 @@ async def trigger_chirp_simulation(request: Request):
         "message": "Hallway Carbon Monoxide detector chirping every 30s. Sensor end-of-life reached.",
         "severity": "critical",
         "entity_id": "ent_co_hallway",
-        "proposal_id": "prop_replace_co_001",
+        "proposal_id": prop_id,
         "actions": [
             {"id": "confirm", "label": "Order Replacement ($34.99)"},
             {"id": "dismiss", "label": "Dismiss"}
         ]
     }
-    await broadcast_proactive_event(event)
+    await SSE_BROADCASTER.broadcast(event)
     return JSONResponse({"status": "simulated", "tool_result": [c.text for c in getattr(res, "content", [])]})
 
 
 @app.post("/simulate/delivery")
 async def trigger_delivery_followup():
     """Simulates proactive delivery arrival: 'Your CO detector arrived today. Still chirping?'"""
-    event = {
-        "type": "genius.event",
-        "event_id": "evt_delivery_followup_001",
-        "kind": "proactive_follow_up",
-        "title": "Delivery Arrived",
-        "message": "Your Kidde CO detector replacement arrived today. Is the hallway unit still chirping?",
-        "spoken_text": "Your replacement carbon monoxide alarm just arrived on your porch. Would you like me to walk you through replacing the hallway unit?",
-        "entity_id": "ent_co_hallway",
-        "actions": [
-            {"id": "walkthrough", "label": "Walk me through replacement"},
-            {"id": "resolved", "label": "All sorted, thanks"}
-        ]
-    }
-    await broadcast_proactive_event(event)
+    event = PROACTIVE_ENGINE.generate_delivery_followup(entity_id="ent_co_detector_hallway")
+    await PROACTIVE_ENGINE.emit_proactive_event(event)
     return JSONResponse({"status": "event_broadcast", "event": event})
+
+
+@app.post("/simulate/freeze")
+async def trigger_freeze_warning(temp_f: float = 24.0):
+    """Simulates freeze risk proactive warning."""
+    event = PROACTIVE_ENGINE.generate_freeze_risk_warning(outdoor_temp_f=temp_f)
+    if event:
+        await PROACTIVE_ENGINE.emit_proactive_event(event)
+        return JSONResponse({"status": "event_broadcast", "event": event})
+    return JSONResponse({"status": "no_event", "reason": "Temperature above freezing threshold."})
 
 
 # Mount Static Files for Client Simulator

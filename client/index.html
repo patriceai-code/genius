@@ -70,7 +70,10 @@
             <span class="icon">🏥</span> Get Home Health
           </button>
           <button class="btn btn-action" onclick="simulateDelivery()">
-            <span class="icon">📦</span> Trigger Proactive Push
+            <span class="icon">📦</span> Proactive Delivery Follow-Up
+          </button>
+          <button class="btn btn-action" onclick="simulateFreeze()">
+            <span class="icon">❄️</span> Proactive Freeze Alert
           </button>
           <button class="btn btn-action" onclick="openPrivacyInspector()">
             <span class="icon">🛡️</span> Privacy Surface
@@ -110,6 +113,25 @@
           </div>
           <p class="privacy-statement">Every fact in the Home Graph tracks its provenance source. Acoustic analysis runs FFT in-flight and discards raw audio prior to response generation.</p>
         </div>
+
+        <div class="privacy-consent-section" style="margin-bottom: 20px;">
+          <h3 style="font-size: 0.9rem; margin-bottom: 10px; color: var(--alexa-cyan);">Monitoring & Intelligence Controls</h3>
+          <div style="display: flex; flex-direction: column; gap: 8px;">
+            <label style="display: flex; justify-content: space-between; align-items: center; font-size: 0.82rem; background: var(--bg-space); padding: 8px 12px; border-radius: var(--radius-sm); border: 1px solid var(--border-subtle);">
+              <span>Acoustic Pulse Monitoring</span>
+              <input type="checkbox" checked onchange="toggleConsent('acoustic', this.checked)">
+            </label>
+            <label style="display: flex; justify-content: space-between; align-items: center; font-size: 0.82rem; background: var(--bg-space); padding: 8px 12px; border-radius: var(--radius-sm); border: 1px solid var(--border-subtle);">
+              <span>Hardware Lifecycle Tracking</span>
+              <input type="checkbox" checked onchange="toggleConsent('lifecycle', this.checked)">
+            </label>
+            <label style="display: flex; justify-content: space-between; align-items: center; font-size: 0.82rem; background: var(--bg-space); padding: 8px 12px; border-radius: var(--radius-sm); border: 1px solid var(--border-subtle);">
+              <span>Proactive Push Notifications</span>
+              <input type="checkbox" checked onchange="toggleConsent('proactive', this.checked)">
+            </label>
+          </div>
+        </div>
+
         <h3>Registered Entities & Provenance</h3>
         <div id="entities-container" class="entities-list">
           <!-- Populated from list_entities -->
