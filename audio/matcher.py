@@ -2,7 +2,7 @@
 beepdb Acoustic Matcher
 Matches extracted sound features (cadence interval, peak frequency, pulse duration)
 against the sourced beepdb database. Returns candidate device, severity, confidence,
-and the canonical 3 AM diagnostic explanation.
+verification status, and the canonical 3 AM diagnostic explanation.
 """
 
 import os
@@ -26,7 +26,8 @@ class BeepMatch:
         confidence: float,
         expected_interval_s: float,
         expected_freq_hz: float,
-        expected_duration_ms: float
+        expected_duration_ms: float,
+        verification_status: str = "cadence_verified_frequency_nominal"
     ):
         self.device_class = device_class
         self.brand = brand
@@ -38,6 +39,7 @@ class BeepMatch:
         self.expected_interval_s = expected_interval_s
         self.expected_freq_hz = expected_freq_hz
         self.expected_duration_ms = expected_duration_ms
+        self.verification_status = verification_status
 
     def format_3am_speech(self, location: str = "hallway") -> str:
         """Generates clear, reassuring 3 AM voice readout."""
@@ -78,6 +80,7 @@ class BeepMatch:
             "severity": self.severity,
             "action": self.action,
             "confidence": self.confidence,
+            "verification_status": self.verification_status,
             "source_url": self.source_url,
             "spoken_summary": self.format_3am_speech(location),
             "expected_specs": {
@@ -102,6 +105,8 @@ def load_beepdb(csv_path: str = CSV_PATH) -> List[Dict[str, Any]]:
                 "signature_interval_s": float(r["signature_interval_s"]),
                 "signature_duration_ms": float(r["signature_duration_ms"]),
                 "peak_freq_hz": float(r["peak_freq_hz"]),
+                "freq_tolerance_hz": float(r.get("freq_tolerance_hz", 350.0)),
+                "verification_status": r.get("verification_status", "cadence_verified_frequency_nominal"),
                 "device_class": r["device_class"],
                 "brand": r["brand"],
                 "meaning": r["meaning"],
@@ -120,6 +125,7 @@ def match_acoustic_features(
 ) -> Optional[BeepMatch]:
     """
     Ranks beepdb rows against detected features and returns the highest-confidence match.
+    Uses calibrated frequency tolerance bands (±250-400Hz) and prioritizes digital cadence intervals.
     """
     if db_rows is None:
         db_rows = load_beepdb()
@@ -134,28 +140,31 @@ def match_acoustic_features(
         target_interval = row["signature_interval_s"]
         target_freq = row["peak_freq_hz"]
         target_dur = row["signature_duration_ms"]
+        tol_freq = row.get("freq_tolerance_hz", 350.0)
 
-        # 1. Cadence interval score (cadence bucket)
+        # 1. Cadence interval score (digital timer cadence)
         if interval_s > 0:
             interval_diff = abs(interval_s - target_interval)
-            score_interval = max(0.0, 1.0 - (interval_diff / max(target_interval * 0.25, 2.0)))
+            # Allow tight tolerance for interval (e.g. within 20% or 3s)
+            score_interval = max(0.0, 1.0 - (interval_diff / max(target_interval * 0.20, 3.0)))
         else:
-            score_interval = 0.5  # Neutral if interval not captured
+            score_interval = 0.5  # Neutral if single chirp captured
 
-        # 2. Resonant peak frequency score (piezo buzzer resonant peak tolerance ~150Hz)
+        # 2. Resonant peak frequency score (scaled by piezo/component tolerance window)
         freq_diff = abs(peak_freq_hz - target_freq)
-        score_freq = max(0.0, 1.0 - (freq_diff / 150.0))
+        score_freq = max(0.0, 1.0 - (freq_diff / tol_freq))
 
-        # 3. Pulse duration score (tolerance ~40ms)
+        # 3. Pulse duration score (tolerance ~50ms)
         if duration_ms > 0:
             dur_diff = abs(duration_ms - target_dur)
-            score_dur = max(0.0, 1.0 - (dur_diff / 40.0))
+            score_dur = max(0.0, 1.0 - (dur_diff / 50.0))
         else:
             score_dur = 0.7
 
-        # Composite weighted score: Frequency and Cadence are primary identifiers
+        # Composite weighted score:
+        # Cadence timing is primary (digital timer code), Frequency validates acoustic hardware family
         if interval_s > 0:
-            composite_score = (score_freq * 0.50) + (score_interval * 0.35) + (score_dur * 0.15)
+            composite_score = (score_interval * 0.55) + (score_freq * 0.35) + (score_dur * 0.10)
         else:
             composite_score = (score_freq * 0.75) + (score_dur * 0.25)
 
@@ -171,7 +180,8 @@ def match_acoustic_features(
                 confidence=min(composite_score, 0.99),
                 expected_interval_s=target_interval,
                 expected_freq_hz=target_freq,
-                expected_duration_ms=target_dur
+                expected_duration_ms=target_dur,
+                verification_status=row.get("verification_status", "cadence_verified_frequency_nominal")
             )
 
     return best_match

@@ -56,7 +56,8 @@ Return ONLY valid JSON matching this schema:
 
     try:
         client = get_bedrock_client()
-        model_id = "anthropic.claude-3-5-sonnet-20241022-v2:0"
+        model_id = os.getenv("BEDROCK_MODEL_ID", "anthropic.claude-3-7-sonnet-20250219-v1:0")
+
         
         body = json.dumps({
             "anthropic_version": "bedrock-2023-05-31",

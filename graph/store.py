@@ -231,6 +231,54 @@ class HomeGraphStore:
             }
         }
 
+    def upsert_warranty(
+        self,
+        entity_id: str,
+        provider: str,
+        start_date: str,
+        end_date: str,
+        claim_status: str = "none"
+    ) -> Dict[str, Any]:
+        """Registers or updates warranty coverage for a hardware entity."""
+        with self._get_connection() as conn:
+            conn.execute("""
+                INSERT INTO warranties (entity_id, provider, start_date, end_date, claim_status)
+                VALUES (?, ?, ?, ?, ?)
+                ON CONFLICT(entity_id) DO UPDATE SET
+                    provider=excluded.provider,
+                    start_date=excluded.start_date,
+                    end_date=excluded.end_date,
+                    claim_status=excluded.claim_status
+            """, (entity_id, provider, start_date, end_date, claim_status))
+            conn.commit()
+
+        return self.get_warranty(entity_id)
+
+    def get_warranty(self, entity_id: str) -> Optional[Dict[str, Any]]:
+        with self._get_connection() as conn:
+            cur = conn.execute("SELECT * FROM warranties WHERE entity_id = ?", (entity_id,))
+            row = cur.fetchone()
+            return dict(row) if row else None
+
+    def list_warranties(self) -> List[Dict[str, Any]]:
+        """Returns all registered warranties joined with entity details."""
+        query = """
+            SELECT w.entity_id, w.provider, w.start_date, w.end_date, w.claim_status,
+                   e.type, e.brand, e.model, e.location, e.lifecycle_state
+            FROM warranties w
+            JOIN entities e ON w.entity_id = e.id
+            ORDER BY w.end_date ASC
+        """
+        with self._get_connection() as conn:
+            cur = conn.execute(query)
+            return [dict(row) for row in cur.fetchall()]
+
+    def update_warranty_claim(self, entity_id: str, claim_status: str) -> Dict[str, Any]:
+        with self._get_connection() as conn:
+            conn.execute("UPDATE warranties SET claim_status = ? WHERE entity_id = ?", (claim_status, entity_id))
+            conn.commit()
+        return self.get_warranty(entity_id)
+
 
 # Singleton graph store instance
 GRAPH_STORE = HomeGraphStore()

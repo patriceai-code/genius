@@ -1,21 +1,21 @@
-signature_interval_s,signature_duration_ms,peak_freq_hz,device_class,brand,meaning,severity,action,source_url
-30,80,3200,co_detector,Kidde,end_of_life,critical,replace_unit;propose_purchase,https://www.kidde.com/home-safety/en/us/support/help-center/browse-articles/articles/what-do-the-beeps-mean-on-my-co-alarm.html
-60,75,3400,co_detector,First Alert,end_of_life,critical,replace_unit;propose_purchase,https://www.firstalert.com/support/faqs/co-alarm-chirping
-45,60,4000,smoke_detector,First Alert,low_battery,warning,replace_battery;walkthrough,https://www.firstalert.com/support/faqs/smoke-alarm-chirping-reasons
-30,70,3100,smoke_detector,Kidde,low_battery,warning,replace_battery;walkthrough,https://www.kidde.com/home-safety/en/us/support/help-center/browse-articles/articles/smoke-alarm-chirping.html
-60,50,3000,smoke_detector,Google Nest,low_battery,warning,replace_lithium_batteries;walkthrough,https://support.google.com/googlenest/answer/9247656
-30,100,3000,smoke_detector,Google Nest,sensor_failure,critical,replace_unit;propose_purchase,https://support.google.com/googlenest/answer/9247656
-60,60,3300,combo_detector,X-Sense,end_of_life,critical,replace_unit;propose_purchase,https://www.x-sense.com/pages/faq
-60,40,3800,smoke_detector,X-Sense,low_battery,warning,replace_battery;walkthrough,https://www.x-sense.com/pages/faq
-40,80,3200,co_detector,Honeywell,end_of_life,critical,replace_unit;propose_purchase,https://www.resideo.com/us/en/support/honeywell-home-alarms
-45,80,3100,co_detector,FireAngel,sensor_fault,critical,replace_unit;propose_purchase,https://www.fireangel.co.uk/support/troubleshooting
-120,200,2048,refrigerator,Samsung,door_ajar,warning,check_fridge_doors;inspect,https://www.samsung.com/us/support/troubleshooting/TSG01001017/
-60,150,2400,refrigerator,LG,door_ajar,warning,check_fridge_doors;inspect,https://www.lg.com/us/support/help-library/door-alarm-beeping-CT10000021-1402324905380
-30,250,2200,freezer,Bosch,high_temperature_warning,critical,check_freezer_temperature;prevent_spoilage,https://www.bosch-home.co.uk/customer-service/help-and-support/freezers-alarm
-15,120,2800,water_leak_detector,Govee,moisture_detected,critical,inspect_water_leak;emergency_shutoff,https://us.govee.com/pages/faq-water-leak-detector
-30,100,2600,water_leak_detector,Moen Flo,moisture_detected,critical,inspect_pipe_leak;shutoff_main,https://www.moen.com/customer-support/flo-smart-water-monitor-and-shutoff
-60,90,2900,water_leak_detector,YoLink,low_battery,warning,replace_aaa_batteries;walkthrough,https://shop.yosmart.com/pages/support-leak-sensor
-30,500,1800,ups_battery_backup,APC,battery_depleted_power_outage,critical,safe_shutdown_computers;inspect_mains,https://www.apc.com/us/en/faqs/FA158827/
-15,400,2000,ups_battery_backup,CyberPower,on_battery_power,warning,monitor_runtime;prepare_shutdown,https://www.cyberpowersystems.com/faqs/beeping-ups-alerts
-60,300,2500,dehumidifier,Midea,bucket_full,warning,empty_water_bucket;resume_drainage,https://www.midea.com/us/air-conditioners/dehumidifiers/support
-10,180,1500,hvac_furnace,Carrier,filter_pressure_warning,warning,replace_air_filter;propose_purchase,https://www.carrier.com/residential/en/us/homeowner-resources/troubleshooting/
+signature_interval_s,signature_duration_ms,peak_freq_hz,freq_tolerance_hz,verification_status,device_class,brand,meaning,severity,action,source_url
+30,80,3200,350,cadence_verified_frequency_nominal,co_detector,Kidde,end_of_life,critical,replace_unit;propose_purchase,https://www.kidde.com/home-safety/en/us/support/help-center/browse-articles/articles/what-do-the-beeps-mean-on-my-co-alarm.html
+60,75,3400,350,cadence_verified_frequency_nominal,co_detector,First Alert,end_of_life,critical,replace_unit;propose_purchase,https://www.firstalert.com/support/faqs/co-alarm-chirping
+45,60,4000,400,cadence_verified_frequency_nominal,smoke_detector,First Alert,low_battery,warning,replace_battery;walkthrough,https://www.firstalert.com/support/faqs/smoke-alarm-chirping-reasons
+30,101,3368,350,verified_physical_recording,smoke_detector,Kidde,low_battery,warning,replace_battery;walkthrough,https://www.kidde.com/home-safety/en/us/support/help-center/browse-articles/articles/smoke-alarm-chirping.html
+60,50,3000,350,cadence_verified_frequency_nominal,smoke_detector,Google Nest,low_battery,warning,replace_lithium_batteries;walkthrough,https://support.google.com/googlenest/answer/9247656
+30,100,3000,350,cadence_verified_frequency_nominal,smoke_detector,Google Nest,sensor_failure,critical,replace_unit;propose_purchase,https://support.google.com/googlenest/answer/9247656
+60,60,3321,350,verified_physical_recording,combo_detector,X-Sense,end_of_life,critical,replace_unit;propose_purchase,https://www.x-sense.com/pages/faq
+60,40,3800,350,cadence_verified_frequency_nominal,smoke_detector,X-Sense,low_battery,warning,replace_battery;walkthrough,https://www.x-sense.com/pages/faq
+40,80,3200,350,cadence_verified_frequency_nominal,co_detector,Honeywell,end_of_life,critical,replace_unit;propose_purchase,https://www.resideo.com/us/en/support/honeywell-home-alarms
+45,80,3100,350,cadence_verified_frequency_nominal,co_detector,FireAngel,sensor_fault,critical,replace_unit;propose_purchase,https://www.fireangel.co.uk/support/troubleshooting
+120,200,2048,250,cadence_verified_frequency_nominal,refrigerator,Samsung,door_ajar,warning,check_fridge_doors;inspect,https://www.samsung.com/us/support/troubleshooting/TSG01001017/
+60,150,2400,250,cadence_verified_frequency_nominal,refrigerator,LG,door_ajar,warning,check_fridge_doors;inspect,https://www.lg.com/us/support/help-library/door-alarm-beeping-CT10000021-1402324905380
+30,250,2200,250,cadence_verified_frequency_nominal,freezer,Bosch,high_temperature_warning,critical,check_freezer_temperature;prevent_spoilage,https://www.bosch-home.co.uk/customer-service/help-and-support/freezers-alarm
+15,120,2800,300,cadence_verified_frequency_nominal,water_leak_detector,Govee,moisture_detected,critical,inspect_water_leak;emergency_shutoff,https://us.govee.com/pages/faq-water-leak-detector
+30,100,2600,300,cadence_verified_frequency_nominal,water_leak_detector,Moen Flo,moisture_detected,critical,inspect_pipe_leak;shutoff_main,https://www.moen.com/customer-support/flo-smart-water-monitor-and-shutoff
+60,90,2900,300,cadence_verified_frequency_nominal,water_leak_detector,YoLink,low_battery,warning,replace_aaa_batteries;walkthrough,https://shop.yosmart.com/pages/support-leak-sensor
+30,500,1800,250,cadence_verified_frequency_nominal,ups_battery_backup,APC,battery_depleted_power_outage,critical,safe_shutdown_computers;inspect_mains,https://www.apc.com/us/en/faqs/FA158827/
+15,400,2000,250,cadence_verified_frequency_nominal,ups_battery_backup,CyberPower,on_battery_power,warning,monitor_runtime;prepare_shutdown,https://www.cyberpowersystems.com/faqs/beeping-ups-alerts
+60,300,2500,250,cadence_verified_frequency_nominal,dehumidifier,Midea,bucket_full,warning,empty_water_bucket;resume_drainage,https://www.midea.com/us/air-conditioners/dehumidifiers/support
+10,180,1500,250,cadence_verified_frequency_nominal,hvac_furnace,Carrier,filter_pressure_warning,warning,replace_air_filter;propose_purchase,https://www.carrier.com/residential/en/us/homeowner-resources/troubleshooting/

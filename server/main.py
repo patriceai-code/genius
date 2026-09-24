@@ -8,7 +8,10 @@ from contextlib import asynccontextmanager
 import asyncio
 import json
 import logging
+import uuid
+import datetime
 from typing import Dict, Any, AsyncGenerator
+
 
 from fastapi import FastAPI, Request
 from fastapi.responses import HTMLResponse, JSONResponse, StreamingResponse
@@ -125,8 +128,32 @@ async def call_tool_direct(request: Request):
         return JSONResponse({"status": "error", "error": str(e)}, status_code=400)
 
 
+from graph.store import GRAPH_STORE
+from audio.tts import synthesize_speech
+from fastapi.responses import Response
+
+
+@app.get("/api/warranties")
+async def get_all_warranties():
+    """Returns all active and expired warranties from the Home Graph."""
+    warranties = GRAPH_STORE.list_warranties()
+    return JSONResponse({"count": len(warranties), "warranties": warranties})
+
+
+@app.get("/api/polly/speak")
+async def polly_speak_get(text: str = ""):
+    """Streams Polly neural audio for the given text."""
+    if not text:
+        return JSONResponse({"status": "error", "message": "No text provided"}, status_code=400)
+    audio_bytes = synthesize_speech(text)
+    if audio_bytes:
+        return Response(content=audio_bytes, media_type="audio/mpeg")
+    return JSONResponse({"status": "unavailable"}, status_code=404)
+
+
 from proactive.transports.sse import SSE_BROADCASTER
 from proactive.engine import PROACTIVE_ENGINE
+
 
 
 # SSE Proactive Push Endpoint for Alexa+ Simulator
@@ -200,8 +227,39 @@ async def trigger_freeze_warning(temp_f: float = 24.0):
     return JSONResponse({"status": "no_event", "reason": "Temperature above freezing threshold."})
 
 
-# Mount Static Files for Client Simulator
+@app.post("/simulate/real_chirp")
+async def simulate_real_chirp():
+    """Simulates diagnosing a verified physical smoke detector recording."""
+    real_clip_path = "tests/clips/real_smoke_detector_chirp_819808.wav"
+    await mcp_server.call_tool("hear_sound", {"clip_path": real_clip_path, "location": "hallway"})
+    res_diag = await mcp_server.call_tool("diagnose", {
+        "interval_s": 30.0,
+        "peak_freq_hz": 3368.0,
+        "duration_ms": 101.5,
+        "location": "hallway",
+        "clip_id": "real_smoke_detector_chirp_819808.wav"
+    })
+    
+    event = {
+        "id": f"evt_real_chirp_{uuid.uuid4().hex[:6]}",
+        "type": "acoustic_detection",
+        "timestamp": datetime.datetime.now(datetime.timezone.utc).isoformat(),
+        "spoken_text": "That's your Kidde Smoke Detector in your hallway signaling a low battery with a 30-second chirp. I can guide you through replacing the battery when you're ready.",
+        "card_title": "Verified Physical Chirp: Kidde Smoke Detector",
+        "card_body": "Empirical recording match: 3,368 Hz piezo resonance, 101 ms pulse, 30s interval. Sourced from Bloofrzo (CC0). Raw audio was zero-wiped in RAM.",
+        "actions": [
+            {"id": "confirm", "label": "Order 9V Battery ($8.99)"},
+            {"id": "dismiss", "label": "Dismiss"}
+        ]
+    }
+    await SSE_BROADCASTER.broadcast(event)
+    return JSONResponse({"status": "success", "diagnosis": [c.text for c in getattr(res_diag, "content", [])]})
+
+
+# Mount Static Files for Client Simulator and Test Clips
+app.mount("/clips", StaticFiles(directory="tests/clips"), name="clips")
 app.mount("/client", StaticFiles(directory="client", html=True), name="client")
+
 
 
 @app.get("/")
