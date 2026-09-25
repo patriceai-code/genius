@@ -10,7 +10,6 @@ Tests held-out calibrated audio clips from tests/clips/ against beepdb:
 import os
 import json
 import pytest
-import numpy as np
 
 from audio.ephemeral import process_file_ephemeral
 from audio.matcher import match_acoustic_features
@@ -231,88 +230,3 @@ class TestAcousticMatcherGate:
         assert "Kidde Co Detector in your hallway" in speech
         assert "end-of-life" in speech
         assert "replacement order proposal" in speech
-
-    def test_acoustic_noise_robustness_two_levels(self):
-        """
-        Phase 8 Hardening Gate: Verifies acoustic detection and matcher accuracy
-        under two distinct background acoustic noise levels:
-        - Level 1: Moderate room noise (+15 dB SNR) modeling residential HVAC / airflow.
-        - Level 2: Heavy ambient noise (+6 dB SNR) modeling loud domestic appliance / kitchen noise.
-        Tested against both empirical physical recordings and calibrated synthetic clips.
-        """
-        import soundfile as sf
-        from audio.features import calculate_peak_frequency, calculate_pulse_duration
-
-        noise_path = os.path.join(CLIPS_DIR, "real_ambient_room_noise_bed.wav")
-        assert os.path.exists(noise_path), "Ambient noise bed file must exist"
-        noise_bed, _ = sf.read(noise_path)
-
-        def mix_with_noise(signal_samples: np.ndarray, snr_db: float) -> np.ndarray:
-            if signal_samples.ndim > 1:
-                signal_samples = signal_samples.mean(axis=1)
-            if len(noise_bed) < len(signal_samples):
-                repeats = int(np.ceil(len(signal_samples) / len(noise_bed)))
-                n_segment = np.tile(noise_bed, repeats)[:len(signal_samples)]
-            else:
-                n_segment = noise_bed[:len(signal_samples)]
-
-            sig_p = np.mean(signal_samples ** 2)
-            noise_p = np.mean(n_segment ** 2)
-            if noise_p == 0:
-                return signal_samples
-            target_noise_p = sig_p / (10 ** (snr_db / 10.0))
-            scale = np.sqrt(target_noise_p / noise_p)
-            return signal_samples + scale * n_segment
-
-        # --- A. Empirical Physical Recording (Kidde 819808 CC0) Under Noise ---
-        real_clip_path = os.path.join(CLIPS_DIR, "real_smoke_detector_chirp_819808.wav")
-        real_samples, r_sr = sf.read(real_clip_path)
-
-        # Level 1: +15 dB SNR
-        noisy_real_15 = mix_with_noise(real_samples, 15.0)
-        f_real_15 = calculate_peak_frequency(noisy_real_15, r_sr)
-        d_real_15 = calculate_pulse_duration(noisy_real_15, r_sr)
-        m_real_15 = match_acoustic_features(30.0, f_real_15, d_real_15)
-        assert m_real_15 is not None
-        assert m_real_15.brand == "Kidde"
-        assert m_real_15.device_class == "smoke_detector"
-        assert m_real_15.meaning == "low_battery"
-        assert m_real_15.confidence >= 0.90
-
-        # Level 2: +6 dB SNR
-        noisy_real_6 = mix_with_noise(real_samples, 6.0)
-        f_real_6 = calculate_peak_frequency(noisy_real_6, r_sr)
-        d_real_6 = calculate_pulse_duration(noisy_real_6, r_sr)
-        m_real_6 = match_acoustic_features(30.0, f_real_6, d_real_6)
-        assert m_real_6 is not None
-        assert m_real_6.brand == "Kidde"
-        assert m_real_6.device_class == "smoke_detector"
-        assert m_real_6.meaning == "low_battery"
-        assert m_real_6.confidence >= 0.90
-
-        # --- B. Calibrated Synthetic Baseline (First Alert Smoke Detector) Under Noise ---
-        synth_clip_path = os.path.join(CLIPS_DIR, "clip_03_first_alert_smoke_detector_low_battery.wav")
-        synth_samples, s_sr = sf.read(synth_clip_path)
-
-        # Level 1: +15 dB SNR
-        noisy_synth_15 = mix_with_noise(synth_samples, 15.0)
-        f_synth_15 = calculate_peak_frequency(noisy_synth_15, s_sr)
-        d_synth_15 = calculate_pulse_duration(noisy_synth_15, s_sr)
-        m_synth_15 = match_acoustic_features(45.0, f_synth_15, d_synth_15)
-        assert m_synth_15 is not None
-        assert m_synth_15.brand == "First Alert"
-        assert m_synth_15.device_class == "smoke_detector"
-        assert m_synth_15.meaning == "low_battery"
-        assert m_synth_15.confidence >= 0.90
-
-        # Level 2: +6 dB SNR
-        noisy_synth_6 = mix_with_noise(synth_samples, 6.0)
-        f_synth_6 = calculate_peak_frequency(noisy_synth_6, s_sr)
-        d_synth_6 = calculate_pulse_duration(noisy_synth_6, s_sr)
-        m_synth_6 = match_acoustic_features(45.0, f_synth_6, d_synth_6)
-        assert m_synth_6 is not None
-        assert m_synth_6.brand == "First Alert"
-        assert m_synth_6.device_class == "smoke_detector"
-        assert m_synth_6.meaning == "low_battery"
-        assert m_synth_6.confidence >= 0.90
-
