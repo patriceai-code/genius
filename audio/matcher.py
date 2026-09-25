@@ -42,35 +42,80 @@ class BeepMatch:
         self.verification_status = verification_status
 
     def format_3am_speech(self, location: str = "hallway") -> str:
-        """Generates clear, reassuring 3 AM voice readout."""
+        """
+        Generates calibrated 3 AM voice readout based on epistemic confidence:
+        - >= 0.95: Direct factual assertion
+        - 0.80 - 0.94: Hedged nearest-pattern probability ("most consistent with...")
+        - < 0.80: Inquisitive clarifying follow-up
+        """
         loc_phrase = f"in your {location}" if location else "in your home"
         device_title = f"{self.brand} {self.device_class.replace('_', ' ').title()}"
+        class_desc = self.device_class.replace('_', ' ')
 
-        if self.meaning == "end_of_life":
-            return (
-                f"That's your {device_title} {loc_phrase} signaling end-of-life, not a low battery. "
-                f"Its internal sensor has reached manufacturer expiry. I have prepared a replacement order proposal for your review."
-            )
-        elif self.meaning == "low_battery":
-            return (
-                f"That's your {device_title} {loc_phrase} signaling a low battery with a {int(self.expected_interval_s)}-second chirp. "
-                f"I can guide you through replacing the battery when you're ready."
-            )
-        elif self.meaning == "moisture_detected":
-            return (
-                f"Urgent alert: That's your {device_title} {loc_phrase} detecting water moisture! "
-                f"Please inspect the area immediately to prevent water damage."
-            )
-        elif self.meaning == "door_ajar":
-            return (
-                f"Your {device_title} door has been left ajar. "
-                f"Please verify the seal is closed completely."
-            )
+        # Tier 1: High Confidence (>= 0.95) - Definite assertion
+        if self.confidence >= 0.95:
+            if self.meaning == "end_of_life":
+                return (
+                    f"That's your {device_title} {loc_phrase} signaling end-of-life, not a low battery. "
+                    f"Its internal sensor has reached manufacturer expiry. I have prepared a replacement order proposal for your review."
+                )
+            elif self.meaning == "low_battery":
+                return (
+                    f"That's your {device_title} {loc_phrase} signaling a low battery with a {int(self.expected_interval_s)}-second chirp. "
+                    f"I can guide you through replacing the battery when you're ready."
+                )
+            elif self.meaning == "moisture_detected":
+                return (
+                    f"Urgent alert: That's your {device_title} {loc_phrase} detecting water moisture! "
+                    f"Please inspect the area immediately to prevent water damage."
+                )
+            elif self.meaning == "door_ajar":
+                return (
+                    f"Your {device_title} door has been left ajar. "
+                    f"Please verify the seal is closed completely."
+                )
+            else:
+                return (
+                    f"Identified {device_title} {loc_phrase}: {self.meaning.replace('_', ' ')}. "
+                    f"Recommended action: {self.action.replace(';', ', ')}."
+                )
+
+        # Tier 2: Moderate Confidence (0.80 - 0.94) - Hedged pattern consistency
+        elif self.confidence >= 0.80:
+            if self.meaning == "end_of_life":
+                return (
+                    f"This sound is most consistent with an end-of-life sensor alert, likely your {device_title} {loc_phrase}. "
+                    f"I have staged a replacement proposal for your review."
+                )
+            elif self.meaning == "low_battery":
+                return (
+                    f"This sound is most consistent with a low battery alert, likely your {device_title} {loc_phrase}. "
+                    f"The cadence matches a {int(self.expected_interval_s)}-second interval."
+                )
+            elif self.meaning == "door_ajar":
+                return (
+                    f"This alert pattern is most consistent with a door left ajar, possibly your {device_title}. "
+                    f"Please check that the door is closed completely."
+                )
+            elif self.meaning == "on_battery_power":
+                return (
+                    f"This alert matches a battery-backup power transition, likely your {device_title} running on internal battery."
+                )
+            else:
+                return (
+                    f"This sound pattern is most consistent with your {device_title} {loc_phrase} indicating {self.meaning.replace('_', ' ')} "
+                    f"({int(self.confidence * 100)}% pattern match)."
+                )
+
+
+        # Tier 3: Low Confidence (< 0.80) - Exploratory follow-up
         else:
             return (
-                f"Identified {device_title} {loc_phrase}: {self.meaning.replace('_', ' ')}. "
-                f"Recommended action: {self.action.replace(';', ', ')}."
+                f"I detected an acoustic pattern near {int(self.expected_freq_hz)} Hertz with a {int(self.expected_interval_s)}-second interval. "
+                f"It may be related to your {device_title} {loc_phrase}, but my confidence is low at {int(self.confidence * 100)} percent. "
+                f"Could you verify if that {class_desc} is the one making the sound?"
             )
+
 
     def to_dict(self, location: str = "hallway") -> Dict[str, Any]:
         return {

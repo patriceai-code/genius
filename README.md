@@ -55,6 +55,15 @@ GENIUS is a self-hosted Model Context Protocol (MCP) server adhering to the **20
 - **Context:** The classic Smart Home API (`Alexa.ProactiveNotificationSource`) allows proactive alerts but requires rigid `ChangeReport` schemas, OAuth 2.0 account linking infrastructure, and a secondary integration surface outside the modern MCP paradigm.
 - **Decision:** Smart Home API integration is deferred in favor of the clean, self-hosted MCP Streamable HTTP + SSE architecture. This maintains privacy by construction (no cloud account linking required for single-home deployment) and matches the hackathon's focus on the emerging Alexa+ MCP architecture.
 
+### ADR 003: Alexa+ Preview Access, Regional Gating & Dual-Device Staging
+- **Status:** Accepted
+- **Context:** The Alexa+ Developer Preview Toolkit / Add-on Agent Skill CLI is currently invitation-gated and region-restricted (US-East preview cohort; consumer UK Alexa+ rollout scheduled Mar 2026 does not grant developer preview CLI credentials). 
+- **Decision:** We execute a two-device staging architecture adhering strictly to hackathon submission rules:
+  1. **Reactive Voice Surface:** Live Amazon Echo hardware with Alexa+ voice handling user queries (*"Alexa, what's that sound?"*).
+  2. **Proactive Multimodal Surface:** The labeled **"ALEXA+ PREVIEW DEVICE SIMULATOR"** (`client/`) receiving real-time Server-Sent Events from the production MCP server.
+  3. **Protocol Compliance:** Verified against the official Model Context Protocol Streamable HTTP specification (2025-11-25) using both native unit/integration test suites and the official `StreamableHTTPClient` SDK.
+  4. **Transparency:** Simulator usage is explicitly disclosed in the video title card, UI headers, Devpost documentation, and Community Forum submissions.
+
 ---
 
 ## Core Loop & Principles

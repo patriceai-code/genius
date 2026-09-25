@@ -85,3 +85,53 @@ async def test_api_call_diagnose_and_confirm():
         conf_payload = conf_data["result"][0]
         assert conf_payload["executed"] is True
         assert "AMZN-2026-94819" in conf_payload["result"]["order_ref"]
+
+
+def test_mcp_streamable_http_spec_handshake():
+    """
+    Verifies official MCP Streamable HTTP spec (2025-11-25) compliance:
+    1. POST /mcp with 'initialize' returns 200 OK + 'mcp-session-id' header + capabilities
+    2. POST /mcp with 'notifications/initialized' returns 202 Accepted
+    3. POST /mcp with 'tools/list' and session ID returns 200 OK + registered MCP tools
+    """
+    from fastapi.testclient import TestClient
+
+    with TestClient(app, base_url="http://127.0.0.1:8000") as client:
+        # 1. initialize
+        init_res = client.post(
+            "/mcp",
+            json={
+                "jsonrpc": "2.0",
+                "id": 1,
+                "method": "initialize",
+                "params": {
+                    "protocolVersion": "2025-11-25",
+                    "capabilities": {},
+                    "clientInfo": {"name": "alexa_plus_harness", "version": "1.0"},
+                },
+            },
+        )
+        assert init_res.status_code == 200
+        assert "mcp-session-id" in init_res.headers
+        session_id = init_res.headers["mcp-session-id"]
+        assert "2025-11-25" in init_res.text
+        assert "genius" in init_res.text
+
+        # 2. notifications/initialized
+        notif_res = client.post(
+            "/mcp",
+            headers={"mcp-session-id": session_id},
+            json={"jsonrpc": "2.0", "method": "notifications/initialized"},
+        )
+        assert notif_res.status_code == 202
+
+        # 3. tools/list
+        tools_res = client.post(
+            "/mcp",
+            headers={"mcp-session-id": session_id},
+            json={"jsonrpc": "2.0", "id": 2, "method": "tools/list", "params": {}},
+        )
+        assert tools_res.status_code == 200
+        assert "hear_sound" in tools_res.text
+        assert "diagnose" in tools_res.text
+

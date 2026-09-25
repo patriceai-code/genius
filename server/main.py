@@ -47,12 +47,17 @@ async def broadcast_proactive_event(event_data: Dict[str, Any]):
         proactive_subscribers.discard(dead)
 
 
+# Mount MCP Streamable HTTP Application under /mcp
+mcp_app = mcp_server.streamable_http_app(streamable_http_path="/mcp")
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     logger.info("Starting GENIUS MCP Server...")
     logger.info("MCP Streamable HTTP transport configured at %s", CONFIG.streamable_path)
     logger.info("SSE Proactive Events channel configured at %s", CONFIG.sse_events_path)
-    yield
+    async with mcp_server._lowlevel_server._session_manager.run():
+        yield
     logger.info("Shutting down GENIUS MCP Server...")
 
 
@@ -73,9 +78,35 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Mount MCP Streamable HTTP Application under /mcp
-mcp_app = mcp_server.streamable_http_app(streamable_http_path=CONFIG.streamable_path)
-app.mount("/mcp", mcp_app)
+
+@app.api_route("/mcp", methods=["GET", "POST", "DELETE"])
+@app.api_route("/mcp/", methods=["GET", "POST", "DELETE"])
+async def mcp_streamable_http_endpoint(request: Request):
+    """
+    Direct MCP Streamable HTTP endpoint conforming to the 2025-11-25 spec.
+    Handles initialize, tools/list, tools/call, and session resumption without 307 redirects.
+    """
+    from fastapi.responses import Response
+    scope = dict(request.scope)
+    scope["path"] = "/mcp"
+    scope["raw_path"] = b"/mcp"
+
+    res_headers = []
+    res_status = 200
+    res_body = []
+
+    async def send(message):
+        nonlocal res_status, res_headers, res_body
+        if message["type"] == "http.response.start":
+            res_status = message["status"]
+            res_headers = message.get("headers", [])
+        elif message["type"] == "http.response.body":
+            res_body.append(message.get("body", b""))
+
+    await mcp_app(scope, request.receive, send)
+    header_dict = {k.decode("latin1"): v.decode("latin1") for k, v in res_headers}
+    return Response(content=b"".join(res_body), status_code=res_status, headers=header_dict)
+
 
 
 # REST / Inspection Endpoints for Hackathon Judges & Device Simulator

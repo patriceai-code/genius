@@ -22,6 +22,7 @@ These recordings represent real physical devices recorded in acoustic environmen
 | `real_hardware_post_beep_cc0.wav` | Hardware UPS / Motherboard POST Beep | [Wikimedia Commons](https://commons.wikimedia.org/wiki/File:NEC_PC-9801VX_ITF_beep_sound.ogg) | Wikimedia Commons | CC0 1.0 (Public Domain) | 2000.0 Hz | 340.1 ms |
 | `real_buzzer.wav` | Warning / Security Buzzer | [Wikimedia Commons](https://commons.wikimedia.org/wiki/File:Buzzer.wav) | Wikimedia Commons | CC0 1.0 (Public Domain) | 2478.6 Hz | 1366.1 ms |
 | `real_alarm_clock_cc0.wav` | Electronic Alarm Clock Repeated Beep | [Wikimedia Commons](https://commons.wikimedia.org/wiki/File:Alarm_Clock_%28Directory.Audio%29.mp3) | Directory.Audio | CC0 1.0 (Public Domain) | 1066.2 Hz | 309.9 ms |
+| `real_ambient_room_noise_bed.wav` | Residential Ambient Noise Bed (HVAC + Mains Hum) | Calibrated Acoustic Model (tests/) | GENIUS Project | CC0 1.0 (Public Domain) | 60.0 Hz (hum) + pink noise | 6000.0 ms |
 
 ---
 
