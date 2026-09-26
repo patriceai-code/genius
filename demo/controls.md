@@ -2,11 +2,11 @@
 
 ## 1. Hardware Checklist
 
-- [ ] **Primary Device (Acoustic & Voice Input):** Amazon Echo (or Echo Show / microphone).
-- [ ] **Secondary Device (Proactive Display):** iPad / Tablet or secondary browser monitor running `http://localhost:8000/client/index.html`.
-- [ ] **Audio Source:** Mobile phone or secondary speaker ready to play the 30-second Kidde chirp test clip (`tests/clips/clip_01_kidde_co_detector_end_of_life.wav`).
-- [ ] **Backup:** Direct on-screen "Simulate 3:14 AM Chirp" button in the simulator deck if room ambient noise interferes.
-- [ ] **Video Capture:** Screen recorder (OBS / QuickTime) + camera recording the dual-device desk setup.
+- [ ] **Display Device (Multimodal Surface):** iPad / Tablet (or secondary monitor in horizontal Echo Show orientation) displaying `http://localhost:8000/client/index.html` with the mandatory header **"ALEXA+ PREVIEW DEVICE SIMULATOR"** clearly visible at all times.
+- [ ] **Audio Output:** Device speakers active with audible volume for live Amazon Polly Neural TTS (`Joanna`) streaming.
+- [ ] **Physical Chirp Trigger:** Click **"Test Real Recording (Bloofrzo CC0)"** or **"Simulate 3:14 AM Chirp"** (which plays the physical audio recording aloud through the audio pipeline and triggers live in-flight FFT matching).
+- [ ] **Video Capture:** Screen recorder (OBS / QuickTime) capturing the tablet screen, or camera framed directly on the mounted tablet device in a home environment. Zero unlabeled mockups.
+
 
 ---
 

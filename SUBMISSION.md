@@ -10,7 +10,7 @@ Use this document to copy and paste your submission directly into the [Devpost S
 - **Tagline:** *Every place has a genius. Yours finally speaks.*
 - **Primary Track:** Alexa+
 - **Mini-Challenges Entered:**
-  1. **AWS Builder** (Amazon Bedrock Claude 3.5 Sonnet Specialist Deliberation, Multimodal Tag Vision & Polly TTS)
+  1. **AWS Builder** (Amazon Bedrock Nova Pro Specialist Deliberation, Multimodal Tag Vision & Polly Neural TTS)
   2. **Open Source** (Public MIT repo + Standalone `beepdb` acoustic database package)
 - **Primary Repository URL:** https://github.com/patriceai-code/genius
 - **Open Source Mini-Challenge Package URL (`beepdb`):** https://github.com/patriceai-code/beepdb
@@ -31,16 +31,16 @@ Use this document to copy and paste your submission directly into the [Devpost S
    - *"That's your CO detector's end-of-life chirp — not a low battery. Hallway unit, manufactured 2018. Replacement on the way."*
 2. **The House Proposes, Never Acts:** Strict **Propose $\rightarrow$ Confirm** architecture. The system never executes purchases or external mutations autonomously. Acoustic processing is **ephemeral by design** — FFT spectral peaks and cadence features are extracted in-flight, and raw audio buffers are immediately zero-wiped in RAM before returning.
 3. **The House Speaks First:** Server-Sent Events (SSE) push transport delivers unprompted proactive intelligence to a labeled Device Simulator client when a replacement arrives (*"Your Kidde replacement arrived today. Still chirping?"*) or when sub-freezing weather threatens an aging furnace.
-4. **Day 0 Onboarding & Warranties:** Snap a photo of an equipment label; Bedrock Claude 3.5 extracts model numbers and registers 10-year manufacturer warranty coverage into the Home Graph.
-5. **Specialist Deliberation Panel (AWS Builder):** When a furnace or water heater fails, Alexa+ consults an Amazon Bedrock Engineering Specialist to calculate repair cost vs replacement payback, annual energy savings, and five-year TCO.
+4. **Day 0 Onboarding & Warranties:** Snap a photo of an equipment label; Bedrock extracts model numbers and registers manufacturer warranty coverage into the Home Graph.
+5. **Specialist Deliberation Panel (AWS Builder):** When a furnace or water heater fails, Alexa+ consults an Amazon Bedrock Engineering Specialist (powered by Amazon Nova Pro `amazon.nova-pro-v1:0`) to calculate repair cost vs replacement payback, annual energy savings, and five-year TCO.
 
 ### How We Built It
 - **MCP Server:** Python MCP SDK 2.x (`mcp.server.mcpserver`) with Streamable HTTP transport mounted onto FastAPI / Starlette.
 - **Persistent World Model:** SQLite Home Graph with strict data provenance auditing on every entity and incident write.
 - **Acoustic Intelligence:** SciPy and NumPy Hilbert envelope extraction, Fast Fourier Transform (FFT) peak detection, and cadence interval estimation.
 - **AWS Integration:**
-  - **Amazon Bedrock (Anthropic Claude 3.5 Sonnet):** Automated extraction of beep codes from manuals, multimodal tag scanning, and the Specialist Deliberation Panel.
-  - **Amazon Polly:** Neural voice synthesis for proactive audio notifications.
+  - **Amazon Bedrock (Amazon Nova Pro):** Multi-variable engineering deliberation (Repair vs Replace TCO) and automated extraction of beep codes from manuals.
+  - **Amazon Polly:** Neural voice synthesis (`Joanna`) streaming natural voice alerts through the Device Simulator.
 - **Simulator Client:** Single-page ES6 web client with native `EventSource` SSE listener, interactive action cards, and privacy provenance inspector.
 
 ### What We Learned & What's Next
