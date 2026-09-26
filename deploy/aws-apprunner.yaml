@@ -1,0 +1,111 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'GENIUS Home World Model MCP Server - AWS App Runner Service'
+
+Parameters:
+  ServiceName:
+    Type: String
+    Default: 'genius-mcp-server'
+    Description: 'Name of the App Runner service'
+  ImageIdentifier:
+    Type: String
+    Description: 'ECR Image URI for the GENIUS container (e.g. 123456789012.dkr.ecr.us-east-1.amazonaws.com/genius:latest)'
+  Cpu:
+    Type: String
+    Default: '1 vCPU'
+    AllowedValues:
+      - '0.25 vCPU'
+      - '0.5 vCPU'
+      - '1 vCPU'
+      - '2 vCPU'
+  Memory:
+    Type: String
+    Default: '2 GB'
+    AllowedValues:
+      - '0.5 GB'
+      - '1 GB'
+      - '2 GB'
+      - '3 GB'
+      - '4 GB'
+
+Resources:
+  AppRunnerInstanceRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub '${ServiceName}-instance-role'
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - tasks.apprunner.amazonaws.com
+            Action:
+              - sts:AssumeRole
+      Policies:
+        - PolicyName: BedrockAndPollyAccess
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - bedrock:InvokeModel
+                  - bedrock:InvokeModelWithResponseStream
+                  - polly:SynthesizeSpeech
+                Resource: '*'
+
+  AppRunnerService:
+    Type: AWS::AppRunner::Service
+    Properties:
+      ServiceName: !Ref ServiceName
+      SourceConfiguration:
+        AutoDeploymentsEnabled: true
+        AuthenticationConfiguration:
+          AccessRoleArn: !GetAtt AppRunnerAccessRole.Arn
+        ImageRepository:
+          ImageIdentifier: !Ref ImageIdentifier
+          ImageRepositoryType: ECR
+          ImageConfiguration:
+            Port: '8000'
+            RuntimeEnvironmentVariables:
+              - Name: PORT
+                Value: '8000'
+              - Name: HOST
+                Value: '0.0.0.0'
+      InstanceConfiguration:
+        Cpu: !Ref Cpu
+        Memory: !Ref Memory
+        InstanceRoleArn: !GetAtt AppRunnerInstanceRole.Arn
+      HealthCheckConfiguration:
+        Protocol: HTTP
+        Path: /api/config
+        Interval: 10
+        Timeout: 5
+        HealthyThreshold: 1
+        UnhealthyThreshold: 3
+
+  AppRunnerAccessRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub '${ServiceName}-access-role'
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - build.apprunner.amazonaws.com
+            Action:
+              - sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSAppRunnerServicePolicyForECRAccess
+
+Outputs:
+  ServiceUrl:
+    Description: 'Public HTTPS URL of the GENIUS MCP Server'
+    Value: !GetAtt AppRunnerService.ServiceUrl
+  McpEndpoint:
+    Description: 'Model Context Protocol Streamable HTTP Endpoint'
+    Value: !Sub 'https://${AppRunnerService.ServiceUrl}/mcp'
+  SimulatorUrl:
+    Description: 'Cloud-hosted Web Simulator Client'
+    Value: !Sub 'https://${AppRunnerService.ServiceUrl}/client/index.html'
