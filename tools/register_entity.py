@@ -13,6 +13,7 @@ from typing import Dict, Any, Optional
 
 import boto3
 from botocore.exceptions import BotoCoreError, ClientError
+from tools.utils import parse_json_from_llm
 from graph.store import GRAPH_STORE
 
 logger = logging.getLogger("genius.tools.register_entity")
@@ -20,14 +21,13 @@ logger = logging.getLogger("genius.tools.register_entity")
 
 def extract_tag_from_photo_bedrock(image_bytes: bytes) -> Dict[str, Any]:
     """
-    Uses Amazon Bedrock (Claude 3.5 Sonnet Multimodal Vision) to read equipment
+    Uses Amazon Bedrock (Amazon Nova Pro / Claude Sonnet Multimodal Vision) to read equipment
     nameplates, model/serial numbers, and manufacture dates from photos.
+    Defaults to amazon.nova-pro-v1:0 (AWS native) and supports Claude Sonnet models.
     """
     try:
         region = os.getenv("AWS_DEFAULT_REGION", "us-east-1")
-        client = boto3.client("bedrock-runtime", region_name=region)
-        model_id = os.getenv("BEDROCK_MODEL_ID", "anthropic.claude-3-7-sonnet-20250219-v1:0")
-
+        model_id = os.getenv("BEDROCK_VISION_MODEL_ID", os.getenv("BEDROCK_MODEL_ID", "amazon.nova-pro-v1:0"))
 
         b64_image = base64.b64encode(image_bytes).decode("utf-8")
 
@@ -46,25 +46,48 @@ Return ONLY a JSON object:
 }
 """
 
-        body = json.dumps({
-            "anthropic_version": "bedrock-2023-05-31",
-            "max_tokens": 800,
-            "temperature": 0.0,
-            "messages": [{
-                "role": "user",
-                "content": [
+        if "nova" in model_id.lower():
+            body = json.dumps({
+                "messages": [
                     {
-                        "type": "image",
-                        "source": {
-                            "type": "base64",
-                            "media_type": "image/jpeg",
-                            "data": b64_image
-                        }
-                    },
-                    {"type": "text", "text": prompt}
-                ]
-            }]
-        })
+                        "role": "user",
+                        "content": [
+                            {
+                                "image": {
+                                    "format": "jpeg",
+                                    "source": {
+                                        "bytes": b64_image
+                                    }
+                                }
+                            },
+                            {"text": prompt}
+                        ]
+                    }
+                ],
+                "inferenceConfig": {"max_new_tokens": 800, "temperature": 0.0}
+            })
+        elif "claude" in model_id.lower() or "anthropic" in model_id.lower() or "sonnet" in model_id.lower():
+            body = json.dumps({
+                "anthropic_version": "bedrock-2023-05-31",
+                "max_tokens": 800,
+                "temperature": 0.0,
+                "messages": [{
+                    "role": "user",
+                    "content": [
+                        {
+                            "type": "image",
+                            "source": {
+                                "type": "base64",
+                                "media_type": "image/jpeg",
+                                "data": b64_image
+                            }
+                        },
+                        {"type": "text", "text": prompt}
+                    ]
+                }]
+            })
+        else:
+            body = json.dumps({"inputText": prompt})
 
         res = client.invoke_model(
             modelId=model_id,
@@ -73,12 +96,18 @@ Return ONLY a JSON object:
             accept="application/json"
         )
         body_json = json.loads(res["body"].read().decode("utf-8"))
-        text = body_json["content"][0]["text"].strip()
-        if text.startswith("```json"):
-            text = text[7:]
-        if text.endswith("```"):
-            text = text[:-3]
-        return json.loads(text.strip())
+
+        if "nova" in model_id.lower():
+            text = body_json["output"]["message"]["content"][0]["text"].strip()
+        elif "claude" in model_id.lower() or "anthropic" in model_id.lower() or "sonnet" in model_id.lower():
+            text = body_json["content"][0]["text"].strip()
+        else:
+            text = body_json.get("results", [{}])[0].get("outputText", "").strip()
+
+        parsed = parse_json_from_llm(text)
+        parsed["model_used"] = f"bedrock:{model_id}"
+        parsed["execution_mode"] = "live_amazon_bedrock"
+        return parsed
 
     except Exception as e:
         logger.warning(f"Bedrock vision unavailable ({e}), using tag OCR fallback.")
@@ -88,7 +117,9 @@ Return ONLY a JSON object:
             "model": "Infinity 98",
             "serial": "SN-2015-88412",
             "manufacture_year": 2015,
-            "warranty_years": 10
+            "warranty_years": 10,
+            "model_used": "local_ocr_fallback",
+            "execution_mode": "local_fallback"
         }
 
 

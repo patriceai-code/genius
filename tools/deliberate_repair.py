@@ -13,6 +13,7 @@ import logging
 from typing import Dict, Any, Optional
 
 import boto3
+from tools.utils import parse_json_from_llm
 from graph.store import GRAPH_STORE
 
 logger = logging.getLogger("genius.tools.deliberate_repair")
@@ -21,7 +22,7 @@ logger = logging.getLogger("genius.tools.deliberate_repair")
 def run_bedrock_deliberation(entity: Dict[str, Any], incidents: list) -> Dict[str, Any]:
     """
     Calls Amazon Bedrock for expert HVAC/appliance deliberation.
-    Supports Amazon Nova Pro (active default) and Anthropic Claude models.
+    Supports Amazon Nova Pro (active default), Claude Sonnet, and other Bedrock models.
     Explicitly marks model_used and execution_mode in the returned payload.
     """
     region = os.getenv("AWS_DEFAULT_REGION", "us-east-1")
@@ -62,12 +63,12 @@ Return ONLY valid JSON matching this schema:
         client = boto3.client("bedrock-runtime", region_name=region)
 
         # Build payload according to model provider
-        if "nova" in model_id:
+        if "nova" in model_id.lower():
             body = json.dumps({
                 "messages": [{"role": "user", "content": [{"text": prompt}]}],
                 "inferenceConfig": {"max_new_tokens": 800, "temperature": 0.1}
             })
-        elif "anthropic" in model_id:
+        elif "claude" in model_id.lower() or "anthropic" in model_id.lower() or "sonnet" in model_id.lower():
             body = json.dumps({
                 "anthropic_version": "bedrock-2023-05-31",
                 "max_tokens": 800,
@@ -85,19 +86,14 @@ Return ONLY valid JSON matching this schema:
         )
         response_body = json.loads(res["body"].read().decode("utf-8"))
 
-        if "nova" in model_id:
+        if "nova" in model_id.lower():
             text = response_body["output"]["message"]["content"][0]["text"].strip()
-        elif "anthropic" in model_id:
+        elif "claude" in model_id.lower() or "anthropic" in model_id.lower() or "sonnet" in model_id.lower():
             text = response_body["content"][0]["text"].strip()
         else:
             text = response_body.get("results", [{}])[0].get("outputText", "").strip()
 
-        if text.startswith("```json"):
-            text = text[7:]
-        if text.endswith("```"):
-            text = text[:-3]
-
-        parsed = json.loads(text.strip())
+        parsed = parse_json_from_llm(text)
         parsed["model_used"] = f"bedrock:{model_id}"
         parsed["execution_mode"] = "live_amazon_bedrock"
         return parsed
