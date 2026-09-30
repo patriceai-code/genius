@@ -10,6 +10,7 @@ CREATE TABLE IF NOT EXISTS entities (
     lifecycle_state TEXT CHECK(lifecycle_state IN ('unknown', 'healthy', 'aging', 'end_of_life', 'replaced')) DEFAULT 'unknown',
     provenance TEXT NOT NULL,
     confidence REAL DEFAULT 1.0,
+    manufacture_year INTEGER DEFAULT 2023,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
@@ -47,7 +48,7 @@ CREATE TABLE IF NOT EXISTS warranties (
 );
 
 -- Seed initial home baseline
-INSERT OR IGNORE INTO entities (id, type, brand, model, location, lifecycle_state, provenance, confidence) VALUES
-('ent_smoke_kitchen', 'smoke_detector', 'First Alert', 'BRK-9120B', 'kitchen', 'healthy', 'manual_registration:user_input', 0.95),
-('ent_furnace_basement', 'hvac_furnace', 'Carrier', 'Infinity 98', 'basement', 'aging', 'inspection_tag:photo_20260901', 0.90),
-('ent_refrigerator_kitchen', 'refrigerator', 'Samsung', 'French Door', 'kitchen', 'healthy', 'device_discovery:smart_home_network', 0.95);
+INSERT OR IGNORE INTO entities (id, type, brand, model, location, lifecycle_state, provenance, confidence, manufacture_year) VALUES
+('ent_smoke_kitchen', 'smoke_detector', 'First Alert', 'BRK-9120B', 'kitchen', 'healthy', 'manual_registration:user_input', 0.95, 2024),
+('ent_furnace_basement', 'hvac_furnace', 'Carrier', 'Infinity 98', 'basement', 'aging', 'inspection_tag:photo_20260901', 0.90, 2015),
+('ent_refrigerator_kitchen', 'refrigerator', 'Samsung', 'French Door', 'kitchen', 'healthy', 'device_discovery:smart_home_network', 0.95, 2022);

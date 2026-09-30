@@ -9,6 +9,7 @@ Maintains the persistent mental model of the home:
 import sqlite3
 import os
 import json
+import math
 import logging
 import datetime
 from typing import Dict, Any, List, Optional
@@ -16,6 +17,73 @@ from typing import Dict, Any, List, Optional
 logger = logging.getLogger("genius.graph.store")
 DB_PATH = os.path.join(os.path.dirname(__file__), "..", "home_graph.db")
 SCHEMA_PATH = os.path.join(os.path.dirname(__file__), "schema.sql")
+
+WEIBULL_PARAMETERS = {
+    "co_detector": {"eta": 7.0, "beta": 3.0},       # Chemical sensor wear-out accelerates at 7 years
+    "smoke_detector": {"eta": 10.0, "beta": 2.5},    # Optical/ionization chamber decay at 10 years
+    "hvac_furnace": {"eta": 15.0, "beta": 2.2},      # Mechanical/thermal fatigue at 15 years
+    "water_heater": {"eta": 10.0, "beta": 2.0},      # Anode depletion/corrosion at 10 years
+    "refrigerator": {"eta": 12.0, "beta": 2.0},      # Sealed system compressor wear at 12 years
+    "default": {"eta": 10.0, "beta": 2.0}
+}
+
+
+def calculate_continuous_reliability(entity_type: str, age_years: float) -> Dict[str, Any]:
+    """
+    Computes continuous reliability metrics based on a two-parameter Weibull reliability distribution:
+    - Survival probability: R(t) = exp(-(t / eta)^beta)
+    - Cumulative degradation: D(t) = 1.0 - R(t)
+    - Instantaneous hazard rate: h(t) = (beta / eta) * (t / eta)^(beta - 1)
+    - Mean Time to Failure: MTTF = eta * Gamma(1 + 1/beta)
+    """
+    key = "default"
+    for k in WEIBULL_PARAMETERS:
+        if k in entity_type.lower():
+            key = k
+            break
+
+    params = WEIBULL_PARAMETERS[key]
+    eta = params["eta"]
+    beta = params["beta"]
+    t = max(0.0, float(age_years))
+
+    ratio = t / eta
+    reliability = math.exp(-(ratio ** beta))
+    degradation = 1.0 - reliability
+    hazard = (beta / eta) * (ratio ** (beta - 1.0)) if t > 0 else 0.0
+
+    mttf = eta * math.gamma(1.0 + (1.0 / beta))
+    remaining_life = max(0.0, mttf - t)
+
+    return {
+        "reliability_rt": round(reliability, 4),
+        "degradation_index": round(degradation, 4),
+        "hazard_rate": round(hazard, 4),
+        "characteristic_lifespan_years": eta,
+        "weibull_shape_beta": beta,
+        "mean_time_to_failure_years": round(mttf, 1),
+        "remaining_useful_life_years": round(remaining_life, 1)
+    }
+
+
+def _attach_reliability_metrics(entity: Optional[Dict[str, Any]]) -> Optional[Dict[str, Any]]:
+    if not entity:
+        return None
+    current_year = 2026
+    m_year = entity.get("manufacture_year")
+    if not m_year:
+        state = entity.get("lifecycle_state", "healthy")
+        if state == "end_of_life":
+            m_year = current_year - 8
+        elif state == "aging":
+            m_year = current_year - 11
+        else:
+            m_year = current_year - 2
+    age = max(0.0, float(current_year - m_year))
+    rel = calculate_continuous_reliability(entity.get("type", "device"), age)
+    entity["continuous_reliability"] = rel
+    entity["age_years"] = age
+    return entity
 
 
 class HomeGraphStore:
@@ -30,10 +98,17 @@ class HomeGraphStore:
 
     def _init_db(self):
         """Initializes database schema and seed baseline if not present."""
-        if os.path.exists(SCHEMA_PATH):
-            with open(SCHEMA_PATH, "r", encoding="utf-8") as f:
-                schema_sql = f.read()
-            with self._get_connection() as conn:
+        with self._get_connection() as conn:
+            # Migration check: if entities table exists, ensure manufacture_year column exists
+            try:
+                conn.execute("ALTER TABLE entities ADD COLUMN manufacture_year INTEGER DEFAULT 2023")
+                conn.commit()
+            except sqlite3.OperationalError:
+                pass  # table does not exist yet or column already exists
+
+            if os.path.exists(SCHEMA_PATH):
+                with open(SCHEMA_PATH, "r", encoding="utf-8") as f:
+                    schema_sql = f.read()
                 conn.executescript(schema_sql)
                 conn.commit()
 
@@ -46,14 +121,16 @@ class HomeGraphStore:
         location: str,
         lifecycle_state: str,
         provenance: str,
-        confidence: float = 1.0
+        confidence: float = 1.0,
+        manufacture_year: Optional[int] = None
     ) -> Dict[str, Any]:
-        """Creates or updates a hardware entity with strict provenance tracking."""
+        """Creates or updates a hardware entity with strict provenance tracking and continuous reliability."""
         now = datetime.datetime.now(datetime.timezone.utc).isoformat()
+        m_year = manufacture_year or 2023
         with self._get_connection() as conn:
             conn.execute("""
-                INSERT INTO entities (id, type, brand, model, location, lifecycle_state, provenance, confidence, updated_at)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                INSERT INTO entities (id, type, brand, model, location, lifecycle_state, provenance, confidence, manufacture_year, updated_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 ON CONFLICT(id) DO UPDATE SET
                     type=excluded.type,
                     brand=excluded.brand,
@@ -62,8 +139,9 @@ class HomeGraphStore:
                     lifecycle_state=excluded.lifecycle_state,
                     provenance=excluded.provenance,
                     confidence=excluded.confidence,
+                    manufacture_year=excluded.manufacture_year,
                     updated_at=excluded.updated_at
-            """, (entity_id, entity_type, brand, model, location, lifecycle_state, provenance, confidence, now))
+            """, (entity_id, entity_type, brand, model, location, lifecycle_state, provenance, confidence, m_year, now))
             conn.commit()
 
         return self.get_entity(entity_id)
@@ -72,7 +150,9 @@ class HomeGraphStore:
         with self._get_connection() as conn:
             cur = conn.execute("SELECT * FROM entities WHERE id = ?", (entity_id,))
             row = cur.fetchone()
-            return dict(row) if row else None
+            if not row:
+                return None
+            return _attach_reliability_metrics(dict(row))
 
     def list_entities(
         self,
@@ -91,7 +171,7 @@ class HomeGraphStore:
 
         with self._get_connection() as conn:
             cur = conn.execute(query, params)
-            return [dict(row) for row in cur.fetchall()]
+            return [_attach_reliability_metrics(dict(row)) for row in cur.fetchall()]
 
     def record_incident(
         self,
@@ -190,7 +270,7 @@ class HomeGraphStore:
             return prop
 
     def get_home_health(self) -> Dict[str, Any]:
-        """Computes live home health scorecard from current graph state."""
+        """Computes live home health scorecard with continuous Weibull reliability scoring."""
         entities = self.list_entities()
         total = len(entities)
         healthy = sum(1 for e in entities if e["lifecycle_state"] == "healthy")
@@ -200,12 +280,24 @@ class HomeGraphStore:
         incidents = self.list_incidents()
         critical_incidents = [i for i in incidents if i["severity"] == "critical"]
 
-        # Health score calculation (100 base, -25 for EOL, -10 for aging)
-        score = max(0, min(100, 100 - (eol * 25) - (aging * 10)))
+        # Continuous mathematical reliability calculation
+        if total > 0:
+            reliabilities = [
+                e.get("continuous_reliability", {}).get("reliability_rt", 0.90)
+                for e in entities
+            ]
+            fleet_reliability = sum(reliabilities) / total
+            mean_degradation = 1.0 - fleet_reliability
+        else:
+            fleet_reliability = 1.0
+            mean_degradation = 0.0
 
-        summary = f"{healthy} devices healthy."
+        # Health score calculation (100 base, -25 for EOL, -10 for aging, -10 per critical incident)
+        score = max(0, min(100, 100 - (eol * 25) - (aging * 10) - (len(critical_incidents) * 10)))
+
+        summary = f"{healthy} devices healthy. Continuous fleet reliability: {int(fleet_reliability * 100)}%."
         if eol > 0:
-            summary = f"{eol} critical device reached end-of-life; {aging} aging system. Attention required."
+            summary = f"{eol} critical device reached end-of-life; {aging} aging system. Continuous fleet reliability: {int(fleet_reliability * 100)}%. Attention required."
 
         return {
             "health_score": score,
@@ -216,6 +308,12 @@ class HomeGraphStore:
                 "aging_count": aging,
                 "end_of_life_count": eol,
                 "open_incidents": len(critical_incidents)
+            },
+            "continuous_reliability": {
+                "fleet_survival_probability": round(fleet_reliability, 4),
+                "mean_degradation_index": round(mean_degradation, 4),
+                "fleet_reliability_pct": round(fleet_reliability * 100.0, 1),
+                "reliability_model": "weibull_hazard_continuous"
             },
             "recent_incidents": [dict(i) for i in incidents[:3]],
             "card_payload": {
