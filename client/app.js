@@ -316,7 +316,7 @@ async function fetchHomeHealth() {
 
   let healthScore = 85;
   let summary = "1 critical device reached end-of-life; 1 aging system. Attention required.";
-  let total = 7, healthy = 5, aging = 1, eol = 1;
+  let total = 7, healthy = 5, aging = 1, eol = 1, fleetRel = 88.5;
 
   try {
     const res = await fetch(`${API_BASE}/api/call`, {
@@ -334,6 +334,9 @@ async function fetchHomeHealth() {
       healthy = payload.metrics.healthy_count;
       aging = payload.metrics.aging_count;
       eol = payload.metrics.end_of_life_count;
+      if (payload.continuous_reliability) {
+        fleetRel = payload.continuous_reliability.fleet_reliability_pct;
+      }
     }
   } catch (err) {
     console.log("Using cached health scorecard for simulator mode");
@@ -364,6 +367,10 @@ async function fetchHomeHealth() {
           <div class="metric-val" style="color: var(--accent-red);">${eol}</div>
           <div class="metric-lbl">EOL</div>
         </div>
+      </div>
+      <div style="font-size: 0.72rem; color: var(--text-muted); margin-top: 10px; display: flex; justify-content: space-between; border-top: 1px solid var(--border-color); padding-top: 6px;">
+        <span>Weibull Fleet Reliability: <strong style="color: var(--accent-green);">${fleetRel}%</strong></span>
+        <span>Model: Continuous Hazard Decay</span>
       </div>
     </div>
   `);
@@ -401,7 +408,7 @@ async function simulateFreeze() {
       type: "genius.event",
       kind: "freeze_risk",
       title: "Freeze Warning · Aging Heating System",
-      message: "Temperature dropping to 24°F tonight. Your Carrier furnace is aging. Maintain thermostat at 68°F to prevent pipe freeze.",
+      message: "Temperature dropping to 24°F tonight. Your Carrier furnace is aging (manufactured 2015). Simulation projects pipe freeze risk within 27.3h if unmitigated. Maintain thermostat at 68°F.",
       spoken_text: "A freeze alert is in effect with temperatures dropping to 24 degrees. Because your basement furnace is aging, I recommend keeping your heat set to at least 68 degrees tonight.",
       actions: [
         { id: "set_temp_68", label: "Set Thermostat to 68°F" },
