@@ -29,19 +29,21 @@ Use this document to copy and paste your submission directly into the [Devpost S
 ### Key Capabilities
 1. **The House Hears:** *"Alexa, what's that sound?"* The chirp is matched against `beepdb`, a growing library of 20 verified device signatures mapped from official manufacturer documentation.
    - *"That's your CO detector's end-of-life chirp — not a low battery. Hallway unit, manufactured 2018. Replacement on the way."*
-2. **The House Proposes, Never Acts:** Strict **Propose $\rightarrow$ Confirm** architecture. The system never executes purchases or external mutations autonomously. Acoustic processing is **ephemeral by design** — FFT spectral peaks and cadence features are extracted in-flight, and raw audio buffers are immediately zero-wiped in RAM before returning.
-3. **The House Speaks First:** Server-Sent Events (SSE) push transport delivers unprompted proactive intelligence to a labeled Device Simulator client when a replacement arrives (*"Your Kidde replacement arrived today. Still chirping?"*) or when sub-freezing weather threatens an aging furnace.
-4. **Day 0 Onboarding & Warranties:** Snap a photo of an equipment label; Bedrock extracts model numbers and registers manufacturer warranty coverage into the Home Graph.
-5. **Specialist Deliberation Panel (AWS Builder):** When a furnace or water heater fails, Alexa+ consults an Amazon Bedrock Engineering Specialist (powered by Amazon Nova Pro `amazon.nova-pro-v1:0`) to calculate repair cost vs replacement payback, annual energy savings, and five-year TCO.
+2. **The House Predicts (Continuous World-Model Physics):** Rather than arbitrary state flags, every hardware asset tracks continuous Weibull reliability distributions ($R(t) = \exp(-(t/\eta)^\beta)$). The proactive engine runs lumped-capacitance building thermodynamic simulations before staging alerts, calculating exact hours until unheated pipe freeze under sub-freezing weather.
+3. **The House Proposes, Never Acts:** Strict **Propose $\rightarrow$ Confirm** architecture. The system never executes purchases or external mutations autonomously. Acoustic processing is **ephemeral by design** — FFT spectral peaks and cadence features are extracted in-flight, and raw audio buffers are immediately zero-wiped in RAM before returning.
+4. **The House Speaks First:** Server-Sent Events (SSE) push transport delivers unprompted proactive intelligence to a labeled Device Simulator client when a replacement arrives (*"Your Kidde replacement arrived today. Still chirping?"*) or when sub-freezing weather threatens an aging furnace.
+5. **Day 0 Onboarding & Warranties:** Snap a photo of an equipment label; Bedrock multimodal vision (Amazon Nova Pro / Claude Sonnet) extracts model numbers and registers manufacturer warranty coverage into the Home Graph.
+6. **Specialist Deliberation Panel (AWS Builder):** When a furnace or water heater fails, Alexa+ consults an Amazon Bedrock Engineering Specialist (powered by Amazon Nova Pro `amazon.nova-pro-v1:0`) to calculate repair cost vs replacement payback, annual energy savings, and five-year TCO in 2.6 seconds.
 
 ### How We Built It
 - **MCP Server:** Python MCP SDK 2.x (`mcp.server.mcpserver`) with Streamable HTTP transport mounted onto FastAPI / Starlette.
-- **Persistent World Model:** SQLite Home Graph with strict data provenance auditing on every entity and incident write.
+- **Persistent World Model:** SQLite Home Graph with continuous Weibull hazard decay scoring and strict data provenance auditing on every entity and incident write.
 - **Acoustic Intelligence:** SciPy and NumPy Hilbert envelope extraction, Fast Fourier Transform (FFT) peak detection, and cadence interval estimation.
 - **AWS Integration:**
-  - **Amazon Bedrock (Amazon Nova Pro):** Multi-variable engineering deliberation (Repair vs Replace TCO) and automated extraction of beep codes from manuals.
-  - **Amazon Polly:** Neural voice synthesis (`Joanna`) streaming natural voice alerts through the Device Simulator.
+  - **Amazon Bedrock (Amazon Nova Pro):** Multi-variable engineering deliberation (Repair vs Replace TCO) and multimodal nameplate photo tag OCR.
+  - **Amazon Polly:** Neural voice synthesis (`Joanna` / `Ruth`) streaming natural voice alerts through the Device Simulator.
 - **Simulator Client:** Single-page ES6 web client with native `EventSource` SSE listener, interactive action cards, and privacy provenance inspector.
+- **Automated Verification:** 17/17 passing pytest suite verifying spec-compliant MCP 2025-11-25 handshake, ephemeral RAM scrub attestation, and two-level noise robustness (+15 dB and +6 dB SNR).
 
 ### What We Learned & What's Next
 Building with MCP 2.x and Streamable HTTP proved that exposing pure tool functions to frontier reasoning models enables richer agent behaviors than classic rigid conversational slots. Next on our roadmap: expanding `beepdb` to 100+ devices, automated warranty claim filing with insurance APIs, and multimodal acoustic diagnosis for unpatterned mechanical sounds (refrigerant leaks, motor bearing wear).

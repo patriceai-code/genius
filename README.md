@@ -7,7 +7,7 @@
 [![Python](https://img.shields.io/badge/Python-3.11%20%7C%203.12-3776AB.svg?logo=python&logoColor=white)](https://python.org)
 [![AWS Bedrock](https://img.shields.io/badge/Bedrock-Amazon_Nova_Pro-FF9900.svg?logo=amazon-aws&logoColor=white)](https://aws.amazon.com/bedrock/)
 [![Amazon Polly](https://img.shields.io/badge/Polly-Neural_TTS-FF9900.svg?logo=amazon-aws&logoColor=white)](https://aws.amazon.com/polly/)
-[![Tests](https://img.shields.io/badge/Tests-13%2F13_Passing-success.svg)](tests/)
+[![Tests](https://img.shields.io/badge/Tests-17%2F17_Passing-success.svg)](tests/)
 [![Cloud Simulator](https://img.shields.io/badge/Web_Simulator-GitHub_Pages_Live-purple.svg)](https://patriceai-code.github.io/genius/)
 
 **The Home World Model for the Alexa+ Era**  
@@ -23,9 +23,10 @@
 
 > *It’s 3:14 AM and something in your home is chirping. Is it smoke? Carbon monoxide? Low battery? Fridge ajar? For ten thousand years of humans living in houses, no house has ever been able to say it. This is GENIUS.*
 
-**GENIUS** transforms the home into a persistent world model: an evolving graph of physical devices, acoustic incidents, lifecycle states, and proactive health maintenance. Rather than treating Alexa as a voice frontend that merely calls isolated tools from a drawer, GENIUS treats the home as a persistent world model that Alexa **wears**.
+**GENIUS** transforms the home into a persistent world model: an evolving graph of physical devices, acoustic incidents, continuous reliability degradation, and proactive health maintenance. Rather than treating Alexa as a voice frontend that merely calls isolated tools from a drawer, GENIUS treats the home as a persistent world model that Alexa **wears**.
 
 - **The house hears:** Ingests in-flight acoustic observations, extracts spectral features (cadence, duration, peak frequency), and matches them against `beepdb`, a sourced open database of 20 verified device signatures.
+- **The house predicts:** Evaluates physical state using continuous Weibull reliability distributions ($R(t)$) and simulates 48-hour thermodynamic building freeze counterfactuals before taking action.
 - **The house speaks first:** Unprompted Server-Sent Events (SSE) push proactive intelligence to a labeled Device Simulator when a replacement arrives (*"Your Kidde replacement arrived on your porch. Still chirping?"*) or when sub-freezing weather threatens an aging furnace.
 - **The house proposes, never acts:** Strict **Propose $\rightarrow$ Confirm** architecture. The system never executes purchases or external mutations autonomously.
 - **Privacy by construction:** Ephemeral acoustic processing runs FFT in volatile memory and zero-wipes raw audio buffers prior to response generation (provable zero retention).
@@ -127,13 +128,50 @@ A key insight uncovered during development: **physical piezoelectric transducers
 
 ---
 
-## 5. Mini-Challenges Implementation (100% Amazon Infrastructure)
+## 5. The World-Model: Continuous Reliability & Thermodynamic Physics
+
+GENIUS is not an LLM wrapper over smart-home APIs; it is a **continuous physical and temporal world model** of the home infrastructure:
+
+### A. Continuous Reliability Hazard Modeling (Weibull Distributions)
+Rather than discrete, arbitrary state flags, every registered hardware entity continuously tracks reliability decay governed by a two-parameter Weibull reliability distribution:
+
+$$R(t) = \exp\left(-\left(\frac{t}{\eta}\right)^\beta\right)$$
+
+- **Instantaneous Hazard Rate:** $h(t) = \frac{\beta}{\eta} \left(\frac{t}{\eta}\right)^{\beta - 1}$
+- **Cumulative Degradation Index:** $D(t) = 1.0 - R(t)$
+- **Mean Time to Failure (MTTF):** $\text{MTTF} = \eta \cdot \Gamma\left(1 + \frac{1}{\beta}\right)$
+
+| Hardware Family | Characteristic Life ($\eta$) | Shape Factor ($\beta$) | Physical Degradation Mechanism |
+| :--- | :--- | :--- | :--- |
+| **CO Detectors** | $7.0\text{ years}$ | $\beta = 3.0$ | Electrochemical sensor electrolyte dry-out & chemical exhaustion |
+| **Smoke Detectors** | $10.0\text{ years}$ | $\beta = 2.5$ | Optical sensing chamber dust accumulation & photo-emitter degradation |
+| **HVAC Furnaces** | $15.0\text{ years}$ | $\beta = 2.2$ | Thermal cyclic expansion, heat exchanger mechanical fatigue |
+| **Water Heaters** | $10.0\text{ years}$ | $\beta = 2.0$ | Sacrificial anode depletion, galvanic tank corrosion |
+
+Aggregate home health is mathematically derived from continuous fleet survival probability:
+$$\bar{R}_{\text{fleet}} = \frac{1}{N} \sum_{i=1}^N R_i(t)$$
+
+### B. Predictive What-If Counterfactual Simulation (Building Thermodynamics)
+Before triggering proactive interventions, the Proactive Engine executes a numerical simulation of residential thermal decay using a lumped-capacitance heat transfer model:
+
+$$\frac{dT_{\text{in}}}{dt} = -\frac{1}{\tau} (T_{\text{in}} - T_{\text{out}}) + \frac{Q_{\text{furnace}}}{C_{\text{thermal}}}$$
+
+For unheated freeze trajectory calculations ($Q_{\text{furnace}} = 0$):
+$$T_{\text{zone}}(t) = T_{\text{out}} + \big(T_{\text{zone}}(0) - T_{\text{out}}\big) \cdot e^{-t / \tau}$$
+
+- **Branch A (Active Thermostat Maintenance):** Baseline setpoint ($68^\circ\text{F}$) maintains basement pipe envelope at $\ge 52^\circ\text{F}$. Pipe freeze probability: **$0.0\%$**.
+- **Branch B (Unmitigated Furnace Lockout):** If the 11-year-old aging furnace trips on high filter pressure during sub-freezing ($24^\circ\text{F}$) ambient weather, unheated pipe zone drops below $32^\circ\text{F}$ in **$27.3\text{ hours}$**. Pipe freeze probability: **$94\%$**.
+
+---
+
+## 6. Mini-Challenges Implementation (100% Amazon Infrastructure)
 
 ### A. AWS Builder Mini-Challenge
 - **Amazon Bedrock (Amazon Nova Pro `amazon.nova-pro-v1:0`):**
   - **Specialist Deliberation Panel (`deliberate_repair`):** Solves the homeowner dilemma (*"Repair or replace?"*). When an aging Carrier furnace suffers a cracked heat exchanger (\$2,200 repair quote), Nova Pro evaluates compressor age, R-410A refrigerant phaseout regulations, SEER 14 vs 18 energy efficiency differentials, and computes a 5-year TCO and payback analysis in **2.6 seconds**.
+  - **Multimodal Vision Tag Ingestion (`register_entity`):** Native multimodal processing of appliance nameplate photos using Amazon Nova Pro (and Claude Sonnet via `BEDROCK_VISION_MODEL_ID`), robustly parsing structured JSON tags with automated preamble/fence extraction.
   - **Loud Execution Tracking:** Deliberation outputs explicitly stamp `execution_mode: "live_amazon_bedrock"` and `model_used: "bedrock:amazon.nova-pro-v1:0"`.
-- **Amazon Polly Neural TTS:** Real-time speech synthesis (`Joanna` neural voice) streamed directly via `/api/polly/speak` for urgent acoustic alerts and ambient maintenance guidance.
+- **Amazon Polly Neural TTS:** Real-time speech synthesis (`Joanna` / `Ruth` neural voice) streamed directly via `/api/polly/speak` for urgent acoustic alerts and ambient maintenance guidance.
 
 ### B. Open Source Mini-Challenge (`beepdb`)
 - **Published Standalone Repo:** **[github.com/patriceai-code/beepdb](https://github.com/patriceai-code/beepdb)**
@@ -143,32 +181,37 @@ A key insight uncovered during development: **physical piezoelectric transducers
 
 ---
 
-## 6. Verification & Automated Test Suite (13/13 Green)
+## 7. Verification & Automated Test Suite (17/17 Green)
 
 ```powershell
 pytest -v tests/
 ```
 
 ```
-tests/test_loop.py::test_state_remembers_across_loops PASSED             [  7%]
-tests/test_matcher.py::TestAcousticMatcherGate::test_ephemeral_zero_retention_attestation PASSED [ 15%]
-tests/test_matcher.py::TestAcousticMatcherGate::test_10_of_10_acoustic_gate PASSED [ 23%]
-tests/test_matcher.py::TestAcousticMatcherGate::test_real_physical_recordings_gate PASSED [ 30%]
-tests/test_matcher.py::TestAcousticMatcherGate::test_end_to_end_core_loop PASSED [ 38%]
-tests/test_matcher.py::TestAcousticMatcherGate::test_acoustic_noise_robustness_two_levels PASSED [ 46%]
-tests/test_phase1_skeleton.py::test_mcp_config PASSED                    [ 53%]
-tests/test_phase1_skeleton.py::test_registered_seven_tools PASSED        [ 61%]
-tests/test_phase1_skeleton.py::test_api_tools_endpoint PASSED            [ 69%]
-tests/test_phase1_skeleton.py::test_api_call_diagnose_and_confirm PASSED [ 76%]
-tests/test_phase1_skeleton.py::test_mcp_streamable_http_spec_handshake PASSED [ 84%]
-tests/test_warranties_and_deliberation.py::test_device_registration_and_warranty_tracking PASSED [ 92%]
-tests/test_warranties_and_deliberation.py::test_specialist_deliberation_repair_vs_replace PASSED [100%]
+tests/test_loop.py::test_state_remembers_across_loops PASSED             [  5%]
+tests/test_matcher.py::TestAcousticMatcherGate::test_ephemeral_zero_retention_attestation PASSED [ 11%]
+tests/test_matcher.py::TestAcousticMatcherGate::test_10_of_10_acoustic_gate PASSED [ 17%]
+tests/test_matcher.py::TestAcousticMatcherGate::test_real_physical_recordings_gate PASSED [ 23%]
+tests/test_matcher.py::TestAcousticMatcherGate::test_end_to_end_core_loop PASSED [ 29%]
+tests/test_matcher.py::TestAcousticMatcherGate::test_acoustic_noise_robustness_two_levels PASSED [ 35%]
+tests/test_phase1_skeleton.py::test_mcp_config PASSED                    [ 41%]
+tests/test_phase1_skeleton.py::test_registered_seven_tools PASSED        [ 47%]
+tests/test_phase1_skeleton.py::test_api_tools_endpoint PASSED            [ 52%]
+tests/test_phase1_skeleton.py::test_api_call_diagnose_and_confirm PASSED [ 58%]
+tests/test_phase1_skeleton.py::test_mcp_streamable_http_spec_handshake PASSED [ 64%]
+tests/test_warranties_and_deliberation.py::test_device_registration_and_warranty_tracking PASSED [ 70%]
+tests/test_warranties_and_deliberation.py::test_specialist_deliberation_repair_vs_replace PASSED [ 76%]
+tests/test_world_model_and_reliability.py::test_weibull_continuous_reliability_calculation PASSED [ 82%]
+tests/test_world_model_and_reliability.py::test_thermal_freeze_counterfactual_simulation PASSED [ 88%]
+tests/test_world_model_and_reliability.py::test_parse_json_from_llm PASSED [ 94%]
+tests/test_world_model_and_reliability.py::test_home_health_continuous_fleet_metrics PASSED [100%]
 
-============================= 13 passed in 6.25s ==============================
+============================= 17 passed in 8.02s ==============================
 ```
 
 - **Reference Client Compliance:** Verified against the official Model Context Protocol Python SDK's reference client (`mcp.client.streamable_http.StreamableHTTPClient`).
 - **Acoustic Gates:** Held-out empirical recordings (Kidde CC0, First Alert CC0, POST beeps) and synthetic regression suites tested green.
+- **Physical Reliability:** Continuous Weibull distributions verified for monotonic hazard growth and exact analytic characteristic lifespan solutions.
 
 ---
 
