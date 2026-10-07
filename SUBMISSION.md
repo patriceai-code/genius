@@ -13,6 +13,7 @@ Use this document to copy and paste your submission directly into the [Devpost S
   1. **AWS Builder** (Amazon Bedrock Nova Pro Specialist Deliberation, Multimodal Tag Vision & Polly Neural TTS)
   2. **Open Source** (Public MIT repo + Standalone `beepdb` acoustic database package)
 - **Primary Repository URL:** https://github.com/patriceai-code/genius
+- **Live AWS Cloud Simulator URL:** http://genius-simulator-115207986956.s3-website.eu-west-2.amazonaws.com
 - **Open Source Mini-Challenge Package URL (`beepdb`):** https://github.com/patriceai-code/beepdb
 - **Open Source License:** MIT License (Main repository and BeepDB package) / CC-BY 4.0 (Acoustic citations)
 

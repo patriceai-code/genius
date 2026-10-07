@@ -8,12 +8,13 @@
 [![AWS Bedrock](https://img.shields.io/badge/Bedrock-Amazon_Nova_Pro-FF9900.svg?logo=amazon-aws&logoColor=white)](https://aws.amazon.com/bedrock/)
 [![Amazon Polly](https://img.shields.io/badge/Polly-Neural_TTS-FF9900.svg?logo=amazon-aws&logoColor=white)](https://aws.amazon.com/polly/)
 [![Tests](https://img.shields.io/badge/Tests-17%2F17_Passing-success.svg)](tests/)
-[![Cloud Simulator](https://img.shields.io/badge/Web_Simulator-GitHub_Pages_Live-purple.svg)](https://patriceai-code.github.io/genius/)
+[![AWS Hosted Simulator](https://img.shields.io/badge/AWS_Hosted_Simulator-Live_on_S3-FF9900.svg?logo=amazon-aws&logoColor=white)](http://genius-simulator-115207986956.s3-website.eu-west-2.amazonaws.com)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
 
 **The Home World Model for the Alexa+ Era**  
 *Submitted to the Amazon Developer Hackathon 2026 (Primary Track: Alexa+ | Mini-Challenges: AWS Builder & Open Source)*
 
-[Live Cloud Simulator](https://patriceai-code.github.io/genius/) · [beepdb Open Source Library](https://github.com/patriceai-code/beepdb) · [Devpost Submission](SUBMISSION.md) · [Demo Video Script](demo/script.md)
+[Live AWS Simulator](http://genius-simulator-115207986956.s3-website.eu-west-2.amazonaws.com) · [beepdb Open Source Library](https://github.com/patriceai-code/beepdb) · [Devpost Submission](SUBMISSION.md) · [Demo Video Script](demo/script.md)
 
 </div>
 
@@ -217,13 +218,19 @@ tests/test_world_model_and_reliability.py::test_home_health_continuous_fleet_met
 
 ## 7. Cloud Deployment & Quickstart
 
-### Option 1: Live Cloud Web Simulator (Instant Browser Demo)
-Judges and developers can interact with the cloud-hosted simulator directly on GitHub Pages:  
-👉 **[https://patriceai-code.github.io/genius/](https://patriceai-code.github.io/genius/)**
+### Option 1: Live AWS Cloud Web Simulator (Hosted on AWS S3)
+Judges and developers can interact directly with the live AWS-hosted simulator:  
+👉 **[http://genius-simulator-115207986956.s3-website.eu-west-2.amazonaws.com](http://genius-simulator-115207986956.s3-website.eu-west-2.amazonaws.com)**
 
-*(Features built-in Cloud Interactive Demo Mode with waveform animations, sound playback, evidence cards, and custom backend endpoint switching via the ⚙️ Server URL button).*
+*(Deployed natively onto Amazon Web Services S3 static website infrastructure with full waveform animations, empirical audio playback from S3, interactive evidence cards, and dynamic backend endpoint switching via the ⚙️ Server URL button).*
 
-### Option 2: 1-Command Docker Deployment
+### Option 2: 1-Command AWS S3 Deployment
+Deploy your own instance of the simulator to your AWS account in seconds:
+```powershell
+python deploy/deploy_s3_website.py
+```
+
+### Option 3: 1-Command Docker Deployment
 ```bash
 # Clone the repository
 git clone https://github.com/patriceai-code/genius.git
