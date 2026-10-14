@@ -13,7 +13,7 @@
 ## 2. Server Startup Command
 
 ```powershell
-# In c:\Users\zache\GENIUS
+# In repository root directory
 .\.venv\Scripts\python -m uvicorn server.main:app --host 127.0.0.1 --port 8000 --reload
 ```
 

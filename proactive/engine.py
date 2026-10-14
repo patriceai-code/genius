@@ -9,11 +9,58 @@ import uuid
 import math
 import logging
 from typing import Dict, Any, List, Optional
+import numpy as np
 
 from graph.store import HomeGraphStore, GRAPH_STORE
 from proactive.transports.sse import SSE_BROADCASTER
 
 logger = logging.getLogger("genius.proactive.engine")
+
+
+def compute_freeze_monte_carlo(
+    outdoor_temp_f: float = 24.0,
+    initial_indoor_temp_f: float = 68.0,
+    time_horizon_hours: int = 48,
+    nominal_tau_pipe_hours: float = 16.0,
+    n_simulations: int = 5000,
+    seed: int = 0
+) -> Dict[str, float]:
+    """
+    Computes empirical pipe freeze probability via Monte Carlo integration
+    over parameter uncertainty (stochastic weather forecast error and building thermal variation).
+    
+    Model parameters:
+        tau_pipe ~ Lognormal(ln(nominal_tau), sigma=0.3)
+        T_out ~ Normal(outdoor_temp_f, sigma=2.5°F)
+        T_in0 ~ Normal(initial_indoor_temp_f, sigma=2.0°F)
+    """
+    rng = np.random.default_rng(seed)
+    tau = rng.lognormal(np.log(nominal_tau_pipe_hours), 0.3, n_simulations)
+    t_out = rng.normal(outdoor_temp_f, 2.5, n_simulations)
+    t_in0 = rng.normal(initial_indoor_temp_f, 2.0, n_simulations)
+    
+    # 48-hour time grid (0.1h steps)
+    t = np.linspace(0, time_horizon_hours, int(time_horizon_hours * 10) + 1)[:, None]
+    
+    # Analytical trajectory array [time_steps, n_simulations]
+    t_trajectories = t_out + (t_in0 - t_out) * np.exp(-t / tau)
+    
+    min_temps = t_trajectories.min(axis=0)
+    p_freeze = float((min_temps <= 32.0).mean())
+    median_time_to_freeze = float("inf")
+    
+    frozen_mask = (min_temps <= 32.0)
+    if frozen_mask.any():
+        # First time index where temperature drops below 32°F
+        freeze_indices = np.argmax(t_trajectories[:, frozen_mask] <= 32.0, axis=0)
+        freeze_times = t[freeze_indices, 0]
+        median_time_to_freeze = float(np.median(freeze_times))
+        
+    return {
+        "p_freeze_48h_pct": round(p_freeze * 100.0, 1),
+        "median_time_to_freeze_hours": round(median_time_to_freeze, 1) if median_time_to_freeze != float("inf") else 0.0,
+        "n_simulations": n_simulations
+    }
 
 
 def simulate_thermal_freeze_counterfactual(
@@ -33,6 +80,10 @@ def simulate_thermal_freeze_counterfactual(
 
     Unheated analytic solution:
         T_zone(t) = T_out + (T_zone(0) - T_out) * exp(-t / tau)
+        
+    For an unheated pipe zone (e.g. crawlspace / exterior wall cavity, tau ≈ 16h) starting at 68°F 
+    cooling towards 24°F:
+        t_freeze = -16 * ln((32 - 24) / (68 - 24)) = -16 * ln(8/44) = 27.3 hours.
     """
     delta_t = initial_indoor_temp_f - outdoor_temp_f
     freeze_threshold = 32.0
@@ -47,6 +98,15 @@ def simulate_thermal_freeze_counterfactual(
         time_to_freeze_pipe_zone = float("inf")
         time_to_freeze_building = float("inf")
 
+    # Run stochastic Monte Carlo simulation over forecast and thermal uncertainty
+    mc_results = compute_freeze_monte_carlo(
+        outdoor_temp_f=outdoor_temp_f,
+        initial_indoor_temp_f=initial_indoor_temp_f,
+        time_horizon_hours=time_horizon_hours,
+        nominal_tau_pipe_hours=tau_pipe_zone_hours
+    )
+    pipe_freeze_risk_pct = mc_results["p_freeze_48h_pct"]
+
     # Trajectory projection at discrete intervals
     trajectory = []
     for h in [0, 6, 12, 18, 24, 36, 48]:
@@ -59,8 +119,6 @@ def simulate_thermal_freeze_counterfactual(
             "maintained_setpoint_temp_f": initial_indoor_temp_f
         })
 
-    pipe_freeze_risk_pct = 94.0 if time_to_freeze_pipe_zone <= time_horizon_hours else 15.0
-
     return {
         "physics_model": "lumped_capacitance_building_cooling",
         "outdoor_ambient_temp_f": outdoor_temp_f,
@@ -68,6 +126,7 @@ def simulate_thermal_freeze_counterfactual(
         "envelope_time_constant_tau_hours": tau_building_hours,
         "pipe_zone_time_constant_tau_hours": tau_pipe_zone_hours,
         "time_to_pipe_freeze_hours": round(time_to_freeze_pipe_zone, 1),
+        "monte_carlo_validation": mc_results,
         "counterfactual_analysis": {
             "branch_a_active_control": {
                 "furnace_state": "active_monitoring",

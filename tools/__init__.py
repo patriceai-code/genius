@@ -2,6 +2,7 @@
 
 from .hear_sound import register_hear_sound
 from .diagnose import register_diagnose
+from .diagnose_from_description import register_diagnose_from_description
 from .list_entities import register_list_entities
 from .get_home_health import register_get_home_health
 from .propose_action import register_propose_action
@@ -15,9 +16,10 @@ from .deliberate_repair import register_deliberate_repair
 
 def register_all_tools(server):
     """Registers all GENIUS MCP tools onto the MCPServer instance."""
-    # Core 7 Diagnostic & Safety Tools
+    # Core Diagnostic & Safety Tools
     register_hear_sound(server)
     register_diagnose(server)
+    register_diagnose_from_description(server)
     register_list_entities(server)
     register_get_home_health(server)
     register_propose_action(server)

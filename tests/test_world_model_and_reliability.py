@@ -57,10 +57,14 @@ def test_thermal_freeze_counterfactual_simulation():
     assert branch_a["freeze_probability"] == 0.0
     assert branch_a["status"] == "safe_nominal"
 
-    # Branch B: unmitigated lockout results in high freeze probability
+    # Branch B: unmitigated lockout results in high freeze probability derived from Monte Carlo
     branch_b = sim["counterfactual_analysis"]["branch_b_unmitigated_lockout"]
     assert branch_b["freeze_probability"] >= 0.90
     assert branch_b["status"] == "critical_pipe_burst_risk"
+    assert "monte_carlo_validation" in sim
+    assert sim["monte_carlo_validation"]["n_simulations"] == 5000
+    assert 90.0 <= sim["monte_carlo_validation"]["p_freeze_48h_pct"] <= 98.0
+    assert 22.0 <= sim["monte_carlo_validation"]["median_time_to_freeze_hours"] <= 32.0
 
     # Check cooling trajectory progression
     trajectory = sim["cooling_trajectory"]

@@ -41,7 +41,7 @@ Because the current Alexa+ Preview client cannot yet accept arbitrary unprompted
 ### 3. Explicit Questions for the Amazon Alexa+ Team & Hackathon Organizers
 1. **Scoring & Eligibility Clarification:**
    > **We ship a real self-hosted MCP server AND use a labeled simulator client for server-initiated events; does the simulated path affect eligibility or scoring for the Alexa+ track?**
-   (Our server, MCP Streamable HTTP transport, 11 tools, and event dispatch logic are 100% real and production-ready; only the client display for unprompted server-initiated events runs on our labeled simulator).
+   (Our server, MCP Streamable HTTP transport, 12 tools, and event dispatch logic are 100% real and production-ready; only the client display for unprompted server-initiated events runs on our labeled simulator).
 
 2. **Roadmap Question on Server-Initiated Proactivity:**
    What is the envisioned architecture for **server-initiated proactive push notifications** in future iterations of the Alexa+ MCP ecosystem?

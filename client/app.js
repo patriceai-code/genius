@@ -9,10 +9,11 @@ let activeEventSource = null;
 let currentProposalId = null;
 let isCloudDemoMode = false;
 
-// Fallback Catalog of Registered 11 MCP Tools for Cloud Demo Mode
+// Fallback Catalog of Registered 12 MCP Tools for Cloud Demo Mode
 const FALLBACK_TOOLS = [
   { name: "hear_sound", description: "Acoustic sensor entry point. Ingests in-flight audio or cadence description, extracts spectral features, and strictly purges raw audio from memory." },
   { name: "diagnose", description: "Diagnoses an acoustic pattern against known device beep codes (beepdb). Writes incident and resolution proposal to the Home Graph." },
+  { name: "diagnose_from_description", description: "Voice-native conversational entry point for Alexa+. Matches spoken chirp cadence, frequency perception, and brand hints against beepdb without requiring raw audio." },
   { name: "list_entities", description: "Retrieves registered home devices, detectors, and infrastructure equipment from the Home Graph with verified provenance." },
   { name: "get_home_health", description: "Generates an aggregate Home Health scorecard and visual MCP Apps card payload." },
   { name: "propose_action", description: "Creates an action proposal in the Home Graph. Architectural constraint: strictly non-executing." },

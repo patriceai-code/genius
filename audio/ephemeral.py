@@ -59,9 +59,8 @@ def process_audio_buffer_ephemeral(raw_bytes: bytes) -> EphemeralProcessingResul
     # ACTIVE SCRUBBING: Zero-wipe the array in volatile memory
     data.fill(0.0)
     del data
-    gc.collect()
 
-    logger.info(f"Ephemeral audio scrubbed: {bytes_len} bytes zero-wiped. Retention: 0 bytes.")
+    logger.debug(f"Ephemeral audio scrubbed: {bytes_len} bytes zero-wiped. Retention: 0 bytes.")
     return EphemeralProcessingResult(features, bytes_len)
 
 

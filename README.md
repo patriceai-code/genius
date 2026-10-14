@@ -7,7 +7,7 @@
 [![Python](https://img.shields.io/badge/Python-3.11%20%7C%203.12-3776AB.svg?logo=python&logoColor=white)](https://python.org)
 [![AWS Bedrock](https://img.shields.io/badge/Bedrock-Amazon_Nova_Pro-FF9900.svg?logo=amazon-aws&logoColor=white)](https://aws.amazon.com/bedrock/)
 [![Amazon Polly](https://img.shields.io/badge/Polly-Neural_TTS-FF9900.svg?logo=amazon-aws&logoColor=white)](https://aws.amazon.com/polly/)
-[![Tests](https://img.shields.io/badge/Tests-17%2F17_Passing-success.svg)](tests/)
+[![Tests](https://img.shields.io/badge/Tests-19%2F19_Passing-success.svg)](tests/)
 [![AWS Hosted Simulator](https://img.shields.io/badge/AWS_Hosted_Simulator-Live_on_S3-FF9900.svg?logo=amazon-aws&logoColor=white)](http://genius-simulator-115207986956.s3-website.eu-west-2.amazonaws.com)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
 
@@ -52,19 +52,20 @@ GENIUS implements a dual-transport architecture adhering to the official **Model
 |                              GENIUS MCP SERVER                               |
 |                                                                              |
 |   +---------------------+   +---------------------+   +------------------+   |
-|   | 11 MCP Tools        |   | Acoustic Pipeline   |   | SQLite Graph     |   |
+|   | 12 MCP Tools        |   | Acoustic Pipeline   |   | SQLite Graph     |   |
 |   | - hear_sound        |   | - Hilbert Envelope  |   | - Entities       |   |
 |   | - diagnose          |   | - FFT Peak (3368Hz) |   | - Incidents      |   |
-|   | - list_entities     |   | - beepdb Matcher    |   | - Warranties     |   |
-|   | - get_home_health   |   | - Ephemeral Scrub   |   | - Proposals      |   |
-|   | - propose_action    |   +---------------------+   | - Provenance     |   |
-|   | - confirm_action    |                             +------------------+   |
-|   | - record_incident   |   +---------------------+                          |
-|   | - register_entity   |   | Amazon Bedrock      |   +------------------+   |
-|   | - check_warranty    |   | Nova Pro Engine     |   | Amazon Polly     |   |
-|   | - file_warranty_... |   | - TCO Deliberation  |   | Neural TTS       |   |
-|   | - deliberate_repair |   | - Tag OCR Vision    |   | /api/polly/speak |   |
-|   +---------------------+   +---------------------+   +------------------+   |
+|   | - diagnose_from_... |   | - beepdb Matcher    |   | - Warranties     |   |
+|   | - list_entities     |   | - Ephemeral Scrub   |   | - Proposals      |   |
+|   | - get_home_health   |   +---------------------+   | - Provenance     |   |
+|   | - propose_action    |                             +------------------+   |
+|   | - confirm_action    |   +---------------------+                          |
+|   | - record_incident   |   | Amazon Bedrock      |   +------------------+   |
+|   | - register_entity   |   | Nova Pro Engine     |   | Amazon Polly     |   |
+|   | - check_warranty    |   | - TCO Deliberation  |   | Neural TTS       |   |
+|   | - file_warranty_... |   | - Tag OCR Vision    |   | /api/polly/speak |   |
+|   | - deliberate_repair |   +---------------------+   +------------------+   |
+|   +---------------------+                                                    |
 |                                                                              |
 |   +-----------------------------------------------+                          |
 |   | Proactive Intelligence Engine                 |                          |
@@ -86,23 +87,24 @@ GENIUS implements a dual-transport architecture adhering to the official **Model
 
 ---
 
-## 3. The 11 MCP Tools
+## 3. The 12 MCP Tools
 
-All 11 tools are registered on the FastMCP Streamable HTTP server and exposed via the official 2025-11-25 protocol:
+All 12 tools are registered on the FastMCP Streamable HTTP server and exposed via the official 2025-11-25 protocol:
 
 | # | Tool Name | Key Parameters | Function & Output |
 |---|---|---|---|
 | 1 | `hear_sound` | `audio_clip_b64`, `location`, `interval_s` | Ephemeral sensor intake. Ingests raw audio, extracts spectral features, strictly wipes RAM, returns features. |
 | 2 | `diagnose` | `interval_s`, `peak_freq_hz`, `duration_ms` | Matches features against `beepdb`, logs incident with provenance, creates purchase/remedy proposal. |
-| 3 | `list_entities` | `lifecycle_filter` | Queries the Home Graph hardware registry with verified provenance tags and lifecycle states. |
-| 4 | `get_home_health` | none | Computes composite 0–100 health score, healthy/aging/EOL counts, and MCP Apps card payload. |
-| 5 | `propose_action` | `kind`, `title`, `entity_id` | **Strict architectural gate:** Creates structured proposal. Never mutates outside state. |
-| 6 | `confirm_action` | `proposal_id`, `confirmed` | Authorization mutation gate. Executes dispatch/order only after explicit user approval. |
-| 7 | `record_incident` | `entity_id`, `description`, `severity` | Appends anomaly record to the persistent SQLite Home Graph ledger. |
-| 8 | `register_entity` | `brand`, `model`, `location`, `year` | Day 0 onboarding. Registers equipment specifications and seeds warranty policies. |
-| 9 | `check_warranty` | `entity_id` | Inspects policy coverage dates, active/expired status, and manufacturer replacement terms. |
-| 10 | `file_warranty_claim` | `entity_id`, `reason` | Assembles free manufacturer replacement claim dossier for devices that fail within warranty. |
-| 11 | `deliberate_repair` | `entity_id`, `issue_description` | **AWS Builder:** Invokes Amazon Bedrock Nova Pro for thermodynamic & financial repair-vs-replace analysis. |
+| 3 | `diagnose_from_description` | `interval_s`, `chirps_per_burst`, `brand`, `device_hint` | **Voice-native Alexa+ path:** Matches spoken chirp cadence, frequency perception, and brand hints against `beepdb` without requiring raw audio. |
+| 4 | `list_entities` | `lifecycle_filter` | Queries the Home Graph hardware registry with verified provenance tags and lifecycle states. |
+| 5 | `get_home_health` | none | Computes composite 0–100 health score, healthy/aging/EOL counts, and MCP Apps card payload. |
+| 6 | `propose_action` | `kind`, `title`, `entity_id` | **Strict architectural gate:** Creates structured proposal. Never mutates outside state. |
+| 7 | `confirm_action` | `proposal_id`, `confirmed` | Authorization mutation gate. Executes dispatch/order only after explicit user approval. |
+| 8 | `record_incident` | `entity_id`, `description`, `severity` | Appends anomaly record to the persistent SQLite Home Graph ledger. |
+| 9 | `register_entity` | `brand`, `model`, `location`, `year` | Day 0 onboarding. Registers equipment specifications and seeds warranty policies. |
+| 10 | `check_warranty` | `entity_id` | Inspects policy coverage dates, active/expired status, and manufacturer replacement terms. |
+| 11 | `file_warranty_claim` | `entity_id`, `reason` | Assembles free manufacturer replacement claim dossier for devices that fail within warranty. |
+| 12 | `deliberate_repair` | `entity_id`, `issue_description` | **AWS Builder:** Invokes Amazon Bedrock Nova Pro for thermodynamic & financial repair-vs-replace analysis. |
 
 ---
 
@@ -292,6 +294,8 @@ aws cloudformation create-stack \
 ```
 
 ### Option 5: Local Python Environment
+
+**Windows (PowerShell):**
 ```powershell
 # 1. Setup virtual environment
 python -m venv .venv
@@ -302,6 +306,22 @@ pip install -r requirements.txt
 AWS_ACCESS_KEY_ID=your_key
 AWS_SECRET_ACCESS_KEY=your_secret
 AWS_DEFAULT_REGION=us-east-1
+
+# 3. Launch Uvicorn Server
+python -m uvicorn server.main:app --host 127.0.0.1 --port 8000 --reload
+```
+
+**macOS / Linux (Bash/Zsh):**
+```bash
+# 1. Setup virtual environment
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+
+# 2. Configure AWS credentials (.env)
+export AWS_ACCESS_KEY_ID="your_key"
+export AWS_SECRET_ACCESS_KEY="your_secret"
+export AWS_DEFAULT_REGION="us-east-1"
 
 # 3. Launch Uvicorn Server
 python -m uvicorn server.main:app --host 127.0.0.1 --port 8000 --reload
@@ -331,12 +351,12 @@ python -m uvicorn server.main:app --host 127.0.0.1 --port 8000 --reload
 
 ## 9. Alignment with Official Judging Criteria
 
-| Judging Criterion | How GENIUS Delivers an Undeniable 1st-Place Submission | Empirical Proof / Receipt |
+| Judging Criterion | How GENIUS Fulfills Evaluation Criteria | Empirical Proof / Receipt |
 | :--- | :--- | :--- |
-| **1. Tech Implementation**<br>*(Execution & Tech Leverage)* | • **Alexa+ Track:** 100% compliant self-hosted FastMCP Server speaking **MCP Streamable HTTP (2025-11-25)**, validated with the official MCP Python SDK `StreamableHTTPClient` reference client.<br>• **AWS Builder Mini-Challenge:** 100% Amazon infrastructure using **Amazon Bedrock Nova Pro** (`amazon.nova-pro-v1:0`) for 5-yr TCO deliberation & tag vision, **Amazon Polly Neural TTS** (`Joanna`), and **AWS S3 Static Website Hosting**.<br>• **Open Source Mini-Challenge:** Standalone PyPI package [`beepdb`](https://github.com/patriceai-code/beepdb) with CLI, MIT code, and CC-BY 4.0 data.<br>• **Sub-15ms DSP & Zero Storage:** Hilbert transform analytic envelope $A(t)$ and volatile RAM scrubbing (`ctypes.memset`) proving 0 bytes stored to disk. | • **17/17 Passing Tests** in 8.09s on Python 3.11/3.12 CI.<br>• **100% Physical Accuracy** on Bloofrzo CC0 piezo hardware.<br>• Live Bedrock Nova Pro latency: **2,640 ms**.<br>• Polly Neural TTS TTFB: **180 ms**. |
-| **2. Design**<br>*(Coherence & Platform Fit)* | • **Voice-First Multimodal Synergy:** Designed specifically for Echo & Alexa+ preview devices. Natural voice handles the immediate acoustic query, while the visual surface (tablet simulator / Echo Show) renders rich **Acoustic Evidence Cards** with manual citations without verbal clutter.<br>• **The House Speaks First:** Proactive Server-Sent Events (SSE) push unprompted amber notification cards when Amazon Prime delivers a replacement part.<br>• **Strict Propose $\rightarrow$ Confirm Trust Boundary:** Protects customer peace-of-mind by never executing transactions without explicit confirmation.<br>• **Privacy Surface:** *"What Does GENIUS Know?"* provides transparent provenance inspection and consent toggles. | • **Live Cloud Simulator:** Hosted on AWS S3 with interactive demo controls and 28 CC0 audio test clips.<br>• **ADR 001, 002, 003** documenting clean architectural patterns. |
-| **3. Potential Impact**<br>*(Customer Need & Viability)* | • **Ubiquitous Need:** Solves the 3:14 AM chirping crisis across 142M US homes averaging 22 piezoceramic transducers.<br>• **Massive Loss Prevention:** Prevents **$12,500** average water flood claims and **$15,000+** frozen pipe bursts via continuous building thermodynamics.<br>• **Life Safety:** Eliminates the fatal **71%** error rate of mistaking expired CO alarms for low batteries.<br>• **Viable Beyond Hackathon:** 4 sustainable revenue engines: Prime fulfillment GMV (45%), carrier loss-mitigation telemetry (30%), Alexa+ \$9.99/mo retention (15%), and warranty claim recovery (10%). | • **Lumped-Capacitance Math:** Predicts pipe freezing $27.3\text{ hours}$ ahead at $24^\circ\text{F}$.<br>• Fully articulated business model with unit economics and market sizing. |
-| **4. Quality of the Idea**<br>*(Creativity & Ecosystem Mastery)* | • **From Chatbot to World-Model:** Transcends naive LLM wrappers by giving the home a continuous physical mental model that Alexa **wears**.<br>• **Mathematical Rigor:** Continuous two-parameter Weibull reliability distributions ($R(t) = \exp(-(t/\eta)^\beta)$) and dynamic fleet scores ($\bar{R}_{\text{fleet}}$).<br>• **Acoustic Privacy by Construction:** Overcomes smart home audio surveillance anxiety by actively zero-wiping RAM immediately after FFT feature extraction.<br>• **Deep MCP Ecosystem Mastery:** Pioneers spec-compliant proactive push patterns over Streamable HTTP and structured proposal workflows. | • [github.com/patriceai-code/genius](https://github.com/patriceai-code/genius)<br>• [github.com/patriceai-code/beepdb](https://github.com/patriceai-code/beepdb)<br>• 11 registered MCP tools conforming to spec 2025-11-25. |
+| **1. Tech Implementation**<br>*(Execution & Tech Leverage)* | • **Alexa+ Track:** 100% compliant self-hosted FastMCP Server speaking **MCP Streamable HTTP (2025-11-25)**, validated with the official MCP Python SDK `StreamableHTTPClient` reference client.<br>• **12 Strictly Typed Tools:** Includes voice-native `diagnose_from_description` as well as companion mic `hear_sound`.<br>• **AWS Builder Mini-Challenge:** 100% Amazon infrastructure using **Amazon Bedrock Nova Pro** (`amazon.nova-pro-v1:0`) for 5-yr TCO deliberation & tag vision, **Amazon Polly Neural TTS** (`Joanna`), and **AWS S3 Static Website Hosting**.<br>• **Open Source Mini-Challenge:** Standalone package [`beepdb`](https://github.com/patriceai-code/beepdb) with CLI, MIT code, and CC-BY 4.0 data.<br>• **Sub-15ms DSP & Zero Storage:** Hilbert transform analytic envelope $A(t)$ and volatile memory scrubbing proving zero bytes stored to disk. | • **19/19 Passing Tests** in 6.64s on Python 3.11/3.12 CI.<br>• **Total Local Pipeline Latency:** **13.52 ms**.<br>• **100% Physical Accuracy** on Bloofrzo CC0 piezo hardware.<br>• Live Bedrock Nova Pro latency: **2,640 ms**.<br>• Polly Neural TTS TTFB: **180 ms**. |
+| **2. Design**<br>*(Coherence & Platform Fit)* | • **Voice-First Multimodal Synergy:** Designed specifically for Echo & Alexa+ preview devices. Natural voice handles the immediate acoustic query, while the visual surface (tablet simulator / Echo Show) renders rich **Acoustic Evidence Cards** with manual citations without verbal clutter.<br>• **The House Speaks First:** Proactive Server-Sent Events (SSE) push unprompted amber notification cards when a replacement part arrives.<br>• **Strict Propose $\rightarrow$ Confirm Trust Boundary:** Protects customer peace-of-mind by never executing transactions without explicit confirmation.<br>• **Privacy Surface:** *"What Does GENIUS Know?"* provides transparent provenance inspection and consent toggles. | • **Live Cloud Simulator:** Hosted on AWS S3 with interactive demo controls and 28 CC0 audio test clips.<br>• **ADR 001, 002, 003** documenting clean architectural patterns. |
+| **3. Potential Impact**<br>*(Customer Need & Viability)* | • **Ubiquitous Need:** Solves the 3:14 AM chirping crisis across residential homes containing unmonitored piezoceramic transducers.<br>• **Massive Loss Prevention:** Prevents **$12,500** average water flood claims and **$15,000+** frozen pipe bursts via continuous building thermodynamics.<br>• **Life Safety:** Eliminates confusion where homeowners mistake expired CO alarms for low batteries.<br>• **Viable Beyond Hackathon:** 4 sustainable revenue engines: Prime fulfillment GMV (45%), carrier loss-mitigation telemetry (30%), Alexa+ \$9.99/mo retention (15%), and warranty claim recovery (10%). | • **Lumped-Capacitance Math:** Predicts pipe zone freezing in $27.3\text{ hours}$ at $24^\circ\text{F}$ ($\tau_{\text{pipe}} = 16.0\text{h}$); 5,000-run Monte Carlo yields **94.1% freeze risk**.<br>• Fully articulated business model with unit economics. |
+| **4. Quality of the Idea**<br>*(Creativity & Ecosystem Mastery)* | • **From Chatbot to World-Model:** Transcends naive LLM wrappers by giving the home a continuous physical mental model that Alexa **wears**.<br>• **Mathematical Rigor:** Continuous two-parameter Weibull reliability distributions ($R(t) = \exp(-(t/\eta)^\beta)$) and dynamic fleet scores ($\bar{R}_{\text{fleet}}$).<br>• **Acoustic Privacy by Construction:** Overcomes smart home audio surveillance anxiety by actively clearing buffers immediately after FFT feature extraction and verifying zero disk retention.<br>• **Deep MCP Ecosystem Mastery:** Pioneers spec-compliant proactive push patterns over Streamable HTTP and structured proposal workflows. | • [github.com/patriceai-code/genius](https://github.com/patriceai-code/genius)<br>• [github.com/patriceai-code/beepdb](https://github.com/patriceai-code/beepdb)<br>• 12 registered MCP tools conforming to spec 2025-11-25. |
 
 ---
 

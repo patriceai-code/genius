@@ -25,21 +25,26 @@ async def test_mcp_config():
 
 
 @pytest.mark.asyncio
-async def test_registered_seven_tools():
-    """Verifies all seven required MCP tools are registered."""
+async def test_registered_tools():
+    """Verifies all twelve registered MCP tools are active on the server."""
     expected_tools = {
         "hear_sound",
         "diagnose",
+        "diagnose_from_description",
         "list_entities",
         "get_home_health",
         "propose_action",
         "confirm_action",
-        "record_incident"
+        "record_incident",
+        "register_entity",
+        "check_warranty",
+        "file_warranty_claim",
+        "deliberate_repair"
     }
     tools = await mcp_server.list_tools()
     tool_names = {t.name for t in tools}
     assert expected_tools.issubset(tool_names), f"Missing tools: {expected_tools - tool_names}"
-    assert len(tool_names) >= 7
+    assert len(tool_names) == 12
 
 
 @pytest.mark.asyncio
@@ -134,4 +139,31 @@ def test_mcp_streamable_http_spec_handshake():
         assert tools_res.status_code == 200
         assert "hear_sound" in tools_res.text
         assert "diagnose" in tools_res.text
+        assert "diagnose_from_description" in tools_res.text
+
+
+@pytest.mark.asyncio
+async def test_api_call_diagnose_from_description():
+    """Verifies the voice-native diagnose_from_description tool."""
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as client:
+        res = await client.post("/api/call", json={
+            "name": "diagnose_from_description",
+            "arguments": {
+                "interval_s": 30.0,
+                "chirps_per_burst": 1,
+                "brand": "Kidde",
+                "location": "hallway"
+            }
+        })
+        assert res.status_code == 200
+        data = res.json()
+        assert data["status"] == "success"
+        result = data["result"][0]
+        assert result["matched"] is True
+        assert result["brand"] == "Kidde"
+        assert result["device_class"] == "co_detector"
+        assert result["meaning"] == "end_of_life"
+        assert "proposal" in result
+        assert result["proposal"]["cost_usd"] == 34.99
 
