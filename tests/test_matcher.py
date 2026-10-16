@@ -42,12 +42,14 @@ class TestAcousticMatcherGate:
         assert "zero_wiped_at" in attestation
         assert attestation["persisted_data"] == "features_only"
 
-    def test_10_of_10_acoustic_gate(self):
+    def test_acoustic_diverse_devices_gate(self):
         """
-        The Hackathon 10/10 Gate:
+        The 10-Device Diverse Acoustic Gate:
         Evaluates 10 diverse hardware devices (smoke alarms, CO detectors, water leak sensors,
         refrigerators, and battery backups) through real DSP and matcher paths.
-        Requires 100% accuracy (10/10).
+        Requires 100% accuracy (10/10) on this diverse baseline.
+        (Note: On the full 20-device synthetic corpus, 19/20 match; clip 04 Kidde smoke 30s low-battery
+        at 3100Hz conservatively maps to Kidde CO 30s EOL at 3200Hz due to ±350Hz tolerance window).
         """
         manifest = load_test_manifest()
         # Select 10 diverse clips across distinct brands and device classes

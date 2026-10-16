@@ -7,9 +7,8 @@
 [![Python](https://img.shields.io/badge/Python-3.11%20%7C%203.12-3776AB.svg?logo=python&logoColor=white)](https://python.org)
 [![AWS Bedrock](https://img.shields.io/badge/Bedrock-Amazon_Nova_Pro-FF9900.svg?logo=amazon-aws&logoColor=white)](https://aws.amazon.com/bedrock/)
 [![Amazon Polly](https://img.shields.io/badge/Polly-Neural_TTS-FF9900.svg?logo=amazon-aws&logoColor=white)](https://aws.amazon.com/polly/)
-[![Tests](https://img.shields.io/badge/Tests-19%2F19_Passing-success.svg)](tests/)
+[![CI](https://github.com/patriceai-code/genius/actions/workflows/ci.yml/badge.svg)](https://github.com/patriceai-code/genius/actions/workflows/ci.yml)
 [![AWS Hosted Simulator](https://img.shields.io/badge/AWS_Hosted_Simulator-Live_on_S3-FF9900.svg?logo=amazon-aws&logoColor=white)](http://genius-simulator-115207986956.s3-website.eu-west-2.amazonaws.com)
-[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
 
 **The Home World Model for the Alexa+ Era**  
 *Submitted to the Amazon Developer Hackathon 2026 (Primary Track: Alexa+ | Mini-Challenges: AWS Builder & Open Source)*
@@ -127,7 +126,7 @@ A key insight uncovered during development: **physical piezoelectric transducers
    - **$80\% - 94\%$ Confidence (Hedged Probability):** *"This sound is most consistent with a low battery alert, likely your Kidde Smoke Detector in your hallway."*
    - **$< 80\%$ Confidence (Inquisitive Follow-Up):** *"I detected an acoustic pattern near 3,300 Hz. Could you verify if the hallway detector is the one making the sound?"*
 5. **Two-Level Noise Robustness:** Validated under both **+15 dB SNR** (moderate HVAC/airflow) and **+6 dB SNR** (heavy domestic kitchen noise) with $\ge 90\%$ diagnostic accuracy.
-6. **Ephemeral Zero Retention:** The buffer is immediately zero-wiped with `ctypes.memset` in volatile RAM before returning, provably writing zero bytes to disk.
+6. **Ephemeral Volatile Clearing & Non-Persistence:** Audio is never written to disk, logs, or persistent SQLite DB (verified by automated scan test `test_audio_never_persisted_to_disk_or_db`). In-memory audio buffers are cleared best-effort immediately following feature extraction using `data.fill(0.0)` in volatile RAM.
 
 ---
 
@@ -135,7 +134,7 @@ A key insight uncovered during development: **physical piezoelectric transducers
 
 GENIUS is not an LLM wrapper over smart-home APIs; it is a **continuous physical and temporal world model** of the home infrastructure:
 
-### A. Continuous Reliability Hazard Modeling (Weibull Distributions)
+### A. Continuous Reliability Hazard Modeling (Weibull Priors)
 Rather than discrete, arbitrary state flags, every registered hardware entity continuously tracks reliability decay governed by a two-parameter Weibull reliability distribution:
 
 $$R(t) = \exp\left(-\left(\frac{t}{\eta}\right)^\beta\right)$$
@@ -163,7 +162,10 @@ For unheated freeze trajectory calculations ($Q_{\text{furnace}} = 0$):
 $$T_{\text{zone}}(t) = T_{\text{out}} + \big(T_{\text{zone}}(0) - T_{\text{out}}\big) \cdot e^{-t / \tau}$$
 
 - **Branch A (Active Thermostat Maintenance):** Baseline setpoint ($68^\circ\text{F}$) maintains basement pipe envelope at $\ge 52^\circ\text{F}$. Pipe freeze probability: **$0.0\%$**.
-- **Branch B (Unmitigated Furnace Lockout):** If the 11-year-old aging furnace trips on high filter pressure during sub-freezing ($24^\circ\text{F}$) ambient weather, unheated pipe zone drops below $32^\circ\text{F}$ in **$27.3\text{ hours}$**. Pipe freeze probability: **$94\%$**.
+- **Branch B (Unmitigated Furnace Lockout):** If an aging furnace trips on high filter pressure during sub-freezing ($24^\circ\text{F}$) ambient weather, the unheated pipe zone drops below $32^\circ\text{F}$ in nominal **$27.3\text{ hours}$** ($\tau_{\text{pipe}} = 16.0\text{ h}$).
+- **Monte Carlo Conditioning & Probability:**
+  $$P(\text{pipe zone hits } 32^\circ\text{F within } 48\text{ h} \mid \text{heat off, } 24^\circ\text{F outside, assumed } \tau_{\text{pipe}} \sim \text{Lognormal}(\ln(16), 0.3)) = \mathbf{94.1\%}$$
+  *Sensitivity Note:* This probability is conditioned on the unheated cavity prior ($\tau = 16\text{ h}$). Under a less exposed cavity ($\tau = 24\text{ h}$), freeze probability drops to $66\%$; with whole-house thermal inertia ($\tau = 35\text{ h}$), it falls to $25\%$. In severe draft scenarios (10th percentile), pipe freezing occurs in as little as **$18.2\text{ hours}$**.
 
 ---
 
@@ -172,40 +174,43 @@ $$T_{\text{zone}}(t) = T_{\text{out}} + \big(T_{\text{zone}}(0) - T_{\text{out}}
 ### A. AWS Builder Mini-Challenge
 - **Amazon Bedrock (Amazon Nova Pro `amazon.nova-pro-v1:0`):**
   - **Specialist Deliberation Panel (`deliberate_repair`):** Solves the homeowner dilemma (*"Repair or replace?"*). When an aging Carrier furnace suffers a cracked heat exchanger (\$2,200 repair quote), Nova Pro evaluates compressor age, R-410A refrigerant phaseout regulations, SEER 14 vs 18 energy efficiency differentials, and computes a 5-year TCO and payback analysis in **2.6 seconds**.
-  - **Multimodal Vision Tag Ingestion (`register_entity`):** Native multimodal processing of appliance nameplate photos using Amazon Nova Pro (and Claude Sonnet via `BEDROCK_VISION_MODEL_ID`), robustly parsing structured JSON tags with automated preamble/fence extraction.
+  - **Multimodal Vision Tag Ingestion (`register_entity`):** Native multimodal processing of appliance nameplate photos using Amazon Nova Pro, robustly parsing structured JSON tags with automated preamble/fence extraction.
   - **Loud Execution Tracking:** Deliberation outputs explicitly stamp `execution_mode: "live_amazon_bedrock"` and `model_used: "bedrock:amazon.nova-pro-v1:0"`.
-- **Amazon Polly Neural TTS:** Real-time speech synthesis (`Joanna` / `Ruth` neural voice) streamed directly via `/api/polly/speak` for urgent acoustic alerts and ambient maintenance guidance.
+- **Amazon Polly Neural TTS:** Real-time speech synthesis (`Joanna` neural voice) streamed directly via `/api/polly/speak` for urgent acoustic alerts and ambient maintenance guidance.
 
 ### B. Open Source Mini-Challenge (`beepdb`)
 - **Published Standalone Repo:** **[github.com/patriceai-code/beepdb](https://github.com/patriceai-code/beepdb)**
 - **License Split:** Code under MIT License; data under Creative Commons Attribution 4.0 (CC-BY 4.0).
 - **Zero Copyleft Policy:** Strict rejection of Share-Alike (SA) and Non-Commercial (NC) licenses to ensure pure open-source reusability.
-- **Package & CLI:** Installable Python library with CLI (`beepdb match --freq 3380 --interval 30`).
+- **Package & CLI:** Installable via Git (`pip install git+https://github.com/patriceai-code/beepdb.git`) with CLI (`beepdb match --freq 3200 --interval 30.0` or `beepdb lookup --cadence 30 --freq 3200`).
 
 ---
 
-## 7. Empirical Benchmark Suite & Automated Verification (17/17 Green)
+## 7. Empirical Benchmark Suite & Automated Verification (19/19 Green)
 
-To eliminate blind trust, GENIUS includes an automated empirical benchmark suite (`python benchmarks/run_benchmarks.py`) and a 17/17 pytest suite verifying spec compliance, latency budgets, and physical performance:
+To eliminate blind trust, GENIUS includes an automated empirical benchmark suite (`python benchmarks/run_benchmarks.py`) and a 19/19 pytest suite verifying spec compliance, latency budgets, and physical performance:
 
 ### Latency Budget (Deterministic End-to-End Processing)
 | Stage | Execution Mechanism | Latency | Spec Constraint |
 | :--- | :--- | :--- | :--- |
-| **Acoustic DSP** | Hann-window FFT + Hilbert amplitude envelope | **10.43 ms** | $< 25\text{ ms}$ |
-| **Ephemeral RAM Scrub** | Volatile zero-wipe memory scrub (`ctypes.memset`) | **32.94 ms** | In-flight only |
-| **beepdb Search** | Cadence + resonant frequency tolerance matching | **0.02 ms** | $< 1\text{ ms}$ |
-| **Home Graph Ledger** | SQLite relational write with auditable provenance | **3.99 ms** | $< 10\text{ ms}$ |
-| **Total Local Pipeline** | Raw PCM intake $\rightarrow$ Graph proposal staged | **~15.8 ms** | **Sub-50ms real-time** |
+| **Acoustic DSP** | Hann-window FFT + Hilbert amplitude envelope | **9.80 ms** | $< 25\text{ ms}$ |
+| **Ephemeral RAM Scrub** | Volatile in-memory zeroing (`data.fill(0.0)`) | **0.005 ms** | In-flight only |
+| **beepdb Search** | Cadence + resonant frequency tolerance matching | **0.015 ms** | $< 1\text{ ms}$ |
+| **Home Graph Ledger** | SQLite relational write with auditable provenance | **3.70 ms** | $< 10\text{ ms}$ |
+| **Total Local Pipeline** | Raw PCM intake $\rightarrow$ Graph proposal staged | **13.52 ms** | **Sub-50ms real-time** |
 | **Bedrock Deliberation** | Live Amazon Nova Pro 5-year TCO & payback | **~2,640 ms** | Sub-3s specialist |
-| **Amazon Polly Stream** | First-chunk audio TTFB (`Joanna` / `Ruth`) | **~180 ms** | Real-time speech |
+| **Amazon Polly Stream** | First-chunk audio TTFB (`Joanna` neural voice) | **~180 ms** | Real-time speech |
 
 ### Classification Accuracy & Noise Robustness Gates
 | Test Suite Gate | Dataset / Hardware Profile | Accuracy | Status |
 | :--- | :--- | :--- | :--- |
-| **Synthetic Baseline** | 20 diverse home appliances (smoke, CO, leaks, fridges, UPS) | **100.0% (20/20)** | PASSED |
-| **Empirical Physical Piezos** | Real hardware recordings (Bloofrzo CC0 piezo transducers) | **100.0% (6/6)** | PASSED |
-| **Ambient Noise Robustness** | Real domestic room noise mixed at **+15 dB SNR** | **90.0% (10/10)** | PASSED |
+| **Synthetic Baseline** | 20 diverse home appliances (smoke, CO, leaks, fridges, UPS) | **95.0% (19/20)\*** | PASSED |
+| **Empirical Physical Piezos** | Real hardware recordings (Bloofrzo CC0 piezo transducers) | **100.0% (6/6)\*\*** | PASSED |
+| **Ambient Noise Robustness** | Real domestic room noise mixed at **+15 dB SNR** | **90.0% (9/10)** | PASSED |
 | **Heavy Noise Gate** | Loud kitchen domestic noise bed mixed at **+6 dB SNR** | **90.0% (9/10)** | PASSED |
+
+*\*Note on Synthetic Mismatch: The single synthetic mismatch (clip 04) occurred because Kidde i9010 smoke detector low-battery (30s cadence, 3,100 Hz) falls within 100 Hz of Kidde CO end-of-life (30s cadence, 3,200 Hz). The matcher conservatively classifies this at the higher critical severity level.*  
+*\*\*Note on Physical Piezos: Physical piezo clips were used to calibrate our initial ±350 Hz tolerance band, so this represents verification of physical component resonance rather than a held-out test split.*
 
 ```powershell
 # Run the complete test suite
@@ -216,49 +221,70 @@ python benchmarks/run_benchmarks.py
 ```
 
 ```
-tests/test_loop.py::test_state_remembers_across_loops PASSED             [  5%]
-tests/test_matcher.py::TestAcousticMatcherGate::test_ephemeral_zero_retention_attestation PASSED [ 11%]
-tests/test_matcher.py::TestAcousticMatcherGate::test_10_of_10_acoustic_gate PASSED [ 17%]
-tests/test_matcher.py::TestAcousticMatcherGate::test_real_physical_recordings_gate PASSED [ 23%]
-tests/test_matcher.py::TestAcousticMatcherGate::test_end_to_end_core_loop PASSED [ 29%]
-tests/test_matcher.py::TestAcousticMatcherGate::test_acoustic_noise_robustness_two_levels PASSED [ 35%]
-tests/test_phase1_skeleton.py::test_mcp_config PASSED                    [ 41%]
-tests/test_phase1_skeleton.py::test_registered_seven_tools PASSED        [ 47%]
+tests/test_audio_persistence.py::test_audio_never_persisted_to_disk_or_db PASSED [  5%]
+tests/test_loop.py::test_state_remembers_across_loops PASSED             [ 10%]
+tests/test_matcher.py::TestAcousticMatcherGate::test_ephemeral_zero_retention_attestation PASSED [ 15%]
+tests/test_matcher.py::TestAcousticMatcherGate::test_acoustic_diverse_devices_gate PASSED [ 21%]
+tests/test_matcher.py::TestAcousticMatcherGate::test_real_physical_recordings_gate PASSED [ 26%]
+tests/test_matcher.py::TestAcousticMatcherGate::test_end_to_end_core_loop PASSED [ 31%]
+tests/test_matcher.py::TestAcousticMatcherGate::test_acoustic_noise_robustness_two_levels PASSED [ 36%]
+tests/test_phase1_skeleton.py::test_mcp_config PASSED                    [ 42%]
+tests/test_phase1_skeleton.py::test_registered_tools PASSED              [ 47%]
 tests/test_phase1_skeleton.py::test_api_tools_endpoint PASSED            [ 52%]
-tests/test_phase1_skeleton.py::test_api_call_diagnose_and_confirm PASSED [ 58%]
-tests/test_phase1_skeleton.py::test_mcp_streamable_http_spec_handshake PASSED [ 64%]
-tests/test_warranties_and_deliberation.py::test_device_registration_and_warranty_tracking PASSED [ 70%]
-tests/test_warranties_and_deliberation.py::test_specialist_deliberation_repair_vs_replace PASSED [ 76%]
-tests/test_world_model_and_reliability.py::test_weibull_continuous_reliability_calculation PASSED [ 82%]
-tests/test_world_model_and_reliability.py::test_thermal_freeze_counterfactual_simulation PASSED [ 88%]
+tests/test_phase1_skeleton.py::test_api_call_diagnose_and_confirm PASSED [ 57%]
+tests/test_phase1_skeleton.py::test_mcp_streamable_http_spec_handshake PASSED [ 63%]
+tests/test_phase1_skeleton.py::test_api_call_diagnose_from_description PASSED [ 68%]
+tests/test_warranties_and_deliberation.py::test_device_registration_and_warranty_tracking PASSED [ 73%]
+tests/test_warranties_and_deliberation.py::test_specialist_deliberation_repair_vs_replace PASSED [ 78%]
+tests/test_world_model_and_reliability.py::test_weibull_continuous_reliability_calculation PASSED [ 84%]
+tests/test_world_model_and_reliability.py::test_thermal_freeze_counterfactual_simulation PASSED [ 89%]
 tests/test_world_model_and_reliability.py::test_parse_json_from_llm PASSED [ 94%]
 tests/test_world_model_and_reliability.py::test_home_health_continuous_fleet_metrics PASSED [100%]
 
-============================= 17 passed in 8.12s ==============================
+============================= 19 passed in 6.53s ==============================
 ```
 
 - **Reference Client Compliance:** Verified against the official Model Context Protocol Python SDK's reference client (`mcp.client.streamable_http.StreamableHTTPClient`).
-- **Acoustic Gates:** Held-out empirical recordings (Kidde CC0, First Alert CC0, POST beeps) and synthetic regression suites tested green.
+- **Acoustic Gates:** Empirical physical recordings (Kidde CC0, First Alert CC0, POST beeps) and synthetic regression suites tested green.
 - **Physical Reliability:** Continuous Weibull distributions verified for monotonic hazard growth and exact analytic characteristic lifespan solutions.
 
 ---
 
-## 8. Viable Business Model & Market Viability
+## 8. Validation Limits & Honest Engineering Accounting
+
+In the spirit of scientific integrity and hackathon transparency, we explicitly document the boundaries, assumptions, and validation limits of the current GENIUS prototype:
+
+1. **Alexa+ Voice Interface vs Companion Sensor Intake:**  
+   The current Alexa+ Preview architecture does **not** stream raw ambient room PCM audio into MCP tools. Instead, Alexa+ parses user speech into structured conversational parameters. We designed a dual-intake architecture:
+   - **Voice-Native Path (`diagnose_from_description`):** The primary Alexa+ interaction model. Alexa prompts the user conversationally (*"How many seconds between beeps? Is it a single beep or a burst?"*) and passes arguments directly to `beepdb`.
+   - **Acoustic Sensor Path (`hear_sound`):** An edge sensor intake (e.g. mobile companion app, auxiliary ESP32 far-field mic, or uploaded clip) where raw audio is ephemerally processed via Hilbert/FFT and strictly wiped from RAM.
+2. **Synthetic Corpus vs. Physical Reality:**  
+   The 20-device synthetic corpus validates that our DSP pipeline correctly extracts pulse duration, cadence, and peak frequency from synthesized audio signals. It proves mathematical correctness of the feature extraction code, but does not prove that all production smoke detectors emit idealized square waves. In fact, clip 04 (Kidde i9010 smoke detector at 3,100 Hz) was classified as Kidde CO detector (3,200 Hz) because both share a 30s cadence and fall within the ±350 Hz tolerance band, illustrating inherent acoustic overlap.
+3. **Physical Piezo Calibration Scope:**  
+   Our 100% (6/6) physical recording evaluation was conducted on physical piezo recordings from which our ±350 Hz empirical tolerance window was calibrated. It validates that physical piezo resonance drift is accommodated by our tolerance schema, but does not constitute an uncalibrated held-out machine learning test split.
+4. **Appliance Signaling Mechanisms:**  
+   While smoke and CO alarms communicate exclusively via acoustic piezoceramic buzzers, modern central HVAC furnaces (such as the Carrier Infinity 98) communicate error codes via 3-digit blinking LED boards rather than audible chirps. In GENIUS, the HVAC furnace acoustic signature is included as an illustrative proxy for complex appliance telemetry.
+5. **Simulated State Boundaries:**  
+   Delivery push events and Amazon order IDs (`AMZN-2026-94819`) are staged using simulated state dispatchers (`/simulate/delivery` and `/simulate/freeze`) to demonstrate end-to-end multi-day asynchronous lifecycles within a 90-second evaluation window. Production fulfillment is architecturally gated behind `confirm_action`.
+
+---
+
+## 9. Viable Business Model & Market Viability
 
 GENIUS transforms Alexa from a passive voice utility into an essential home infrastructure custodian with four high-margin revenue streams:
 
 1. **High-Intent Prime Consumables & Hardware Fulfillment:**
    When an end-of-life chirp or low battery occurs, GENIUS stages a 1-click verified replacement order directly to Amazon Prime (e.g. Kidde KN-COPP-3 \$34.99 replacement unit or Energizer 9V 4-pack \$8.99). Amazon captures immediate retail GMV and affiliate margin on high-urgency, non-price-sensitive purchases.
 2. **Insurance Carrier Telemetry & Loss-Mitigation Partnerships:**
-   Water leak and pipe freeze claims account for over \$15 billion annually in US property insurance payouts. By mitigating catastrophic freeze bursts and slow leaks through predictive thermodynamics, Amazon can partner with carriers (State Farm, Nationwide, Aviva) to subsidize Alexa+ subscriptions for policyholders.
+   Water leak and pipe freeze claims account for over **\$15 billion** annually in US property insurance payouts, with the average water damage claim reaching **\$12,514** *(Source: Insurance Information Institute / ISO Homeowners Claim Studies)*, and freeze pipe bursts exceeding **\$15,000–\$20,000** *(Source: State Farm Winter Claims Data)*. By mitigating freeze risks and unaddressed leaks through predictive thermodynamics, Amazon can partner with carriers (State Farm, Nationwide, Aviva) to subsidize Alexa+ subscriptions for policyholders.
 3. **The Killer Differentiator for Alexa+ Subscriptions:**
-   Subscribers do not pay \$9.99/month for conversational timers; they pay for proactive protection that prevents \$12,500 flood disasters and explains 3 AM panic beeps with epistemic certainty.
+   Subscribers do not pay \$9.99/month for conversational timers; they pay for proactive protection that prevents catastrophic five-figure flood disasters and explains 3 AM panic beeps with epistemic certainty.
 4. **Automated Manufacturer Warranty Claim Recovery:**
-   GENIUS automatically files structured warranty claim dossiers for failed in-warranty equipment, recovering \$300–\$1,500 in replacement costs for homeowners while establishing an auditable appliance provenance registry.
+   Homeowners pay **\$89–\$150** in basic service dispatch fees *(Source: Angi / HomeAdvisor 2024 Trade Survey)* often to replace a warranty-covered part. GENIUS automatically files structured warranty claim dossiers for failed in-warranty equipment, recovering \$300–\$1,500 in replacement costs for homeowners while establishing an auditable appliance provenance registry.
 
 ---
 
-## 9. Cloud Deployment & Quickstart
+## 10. Cloud Deployment & Quickstart
 
 ### Option 1: Live AWS Cloud Web Simulator (Hosted on AWS S3)
 Judges and developers can interact directly with the live AWS-hosted simulator:  
@@ -329,7 +355,7 @@ python -m uvicorn server.main:app --host 127.0.0.1 --port 8000 --reload
 
 ---
 
-## 8. Architectural Decision Records (ADRs)
+## 11. Architectural Decision Records (ADRs)
 
 ### ADR 001: Proactive Push Transport Strategy
 - **Status:** Accepted
@@ -349,7 +375,7 @@ python -m uvicorn server.main:app --host 127.0.0.1 --port 8000 --reload
 
 ---
 
-## 9. Alignment with Official Judging Criteria
+## 12. Alignment with Official Judging Criteria
 
 | Judging Criterion | How GENIUS Fulfills Evaluation Criteria | Empirical Proof / Receipt |
 | :--- | :--- | :--- |
@@ -360,7 +386,7 @@ python -m uvicorn server.main:app --host 127.0.0.1 --port 8000 --reload
 
 ---
 
-## 10. Attributions & Licensing
+## 13. Attributions & Licensing
 
 - **Code:** Licensed under the [MIT License](LICENSE).
 - **Data (`beepdb`):** Licensed under [Creative Commons Attribution 4.0 International (CC-BY 4.0)](https://creativecommons.org/licenses/by/4.0/).

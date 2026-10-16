@@ -13,11 +13,11 @@
 - **Onboarding experience:** 8/10. Documentation for stdio is abundant; documentation for Streamable HTTP transport in multi-protocol servers needs more real-world ASGI examples.
 - **Would we build with it again?** Absolutely. MCP is rapidly becoming the universal protocol for agent tool-use.
 
-### B. Amazon Bedrock (Amazon Nova Pro & Claude Sonnet)
+### B. Amazon Bedrock (Amazon Nova Pro)
 - **What we used it for:** 
   1. The Specialist Deliberation Panel in `tools/deliberate_repair.py` (evaluating equipment age, replacement cost, annual efficiency savings, and 5-year TCO economics) using `amazon.nova-pro-v1:0`.
   2. Multimodal vision parsing of appliance inspection tags and nameplates in `tools/register_entity.py`.
-- **What worked well:** Amazon Nova Pro is exceptionally fast—deliberation latency was ~2.64s for complex multi-factor thermodynamic and financial calculations; multimodal vision accurately identified equipment model tags from photos.
+- **What worked well:** Amazon Nova Pro (`amazon.nova-pro-v1:0`) is exceptionally fast—deliberation latency was ~2.64s for complex multi-factor thermodynamic and financial calculations; multimodal vision accurately identified equipment model tags from photos.
 - **What needs work:** Nova Pro occasionally wraps structured JSON responses in markdown code fences (````json ... ````) or prepends conversational commentary ("Here is the financial analysis:"), which breaks standard `json.loads` deserialization unless cleaned with regex extractors.
 - **Onboarding experience:** 9/10. The `boto3` `invoke_model` API is reliable, and Nova Pro's price-to-performance ratio on Bedrock is outstanding.
 - **Would we build with it again?** Yes, Nova Pro is our default production deliberation engine.

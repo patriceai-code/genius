@@ -26,8 +26,9 @@
    - Verify green status indicator: `Connected to FastMCP`.
    - Ensure audio volume is audible for speech synthesis.
 
-2. **Beat 1: The Chirp Diagnosis**
-   - Click **"Simulate 3:14 AM Chirp"** (or play `tests/clips/clip_01_kidde_co_detector_end_of_life.wav` at mic).
+2. **Beat 1: Voice-Native Diagnosis (`diagnose_from_description`)**
+   - Click **"Simulate 3:14 AM Chirp"** (which executes conversational diagnosis with 30s interval, single chirp, Kidde brand).
+   - Alternatively, demonstrate companion mic ingestion via **"Test Real Recording (Bloofrzo CC0)"**.
    - Observe immediate assistant speech and the **Acoustic Evidence Card**.
    - Point camera at the 30.0s cadence, 3.2 kHz peak frequency, and manufacturer reference.
 

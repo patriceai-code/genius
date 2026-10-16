@@ -16,10 +16,10 @@
 6. [Pillar 1: Deterministic Ephemeral DSP Engine](#6-pillar-1-deterministic-ephemeral-dsp-engine)
 7. [Pillar 2: Persistent Mathematical World-Model](#7-pillar-2-persistent-mathematical-world-model)
 8. [Pillar 3: Amazon Bedrock Specialist Deliberation & Alexa+ Proactivity](#8-pillar-3-amazon-bedrock-specialist-deliberation--alexa-proactivity)
-9. [The 11 Model Context Protocol (MCP) Tools](#9-the-11-model-context-protocol-mcp-tools)
+9. [The 12 Model Context Protocol (MCP) Tools](#9-the-12-model-context-protocol-mcp-tools)
 10. [Open Source Contribution: The `beepdb` Package](#10-open-source-contribution-the-beepdb-package)
 11. [Empirical Benchmark Suite & Physical Verification](#11-empirical-benchmark-suite--physical-verification)
-12. [Automated Test Suite & CI Matrix (17/17 Passing)](#12-automated-test-suite--ci-matrix-1717-passing)
+12. [Automated Test Suite & CI Matrix (19/19 Passing)](#12-automated-test-suite--ci-matrix-1919-passing)
 13. [The Alexa+ Device Simulator & Cloud S3 Hosting](#13-the-alexa-device-simulator--cloud-s3-hosting)
 14. [Architectural Decision Records (ADRs)](#14-architectural-decision-records-adrs)
 15. [Viable Business Model & Market Viability](#15-viable-business-model--market-viability)
@@ -81,26 +81,26 @@ flowchart TD
 ```
 
 ### Key Technical Differentiators:
-1. **Mathematical Ground Truth:** Appliance degradation is governed by two-parameter Weibull reliability hazard functions ($R(t)$), not fuzzy textual tags.
+1. **Mathematical Priors & Physics Models:** Appliance degradation is governed by two-parameter Weibull reliability hazard functions ($R(t)$), not fuzzy textual tags.
 2. **Predictive Physics:** Before issuing alerts, the engine runs continuous-time lumped-capacitance thermodynamic counterfactuals to simulate freeze risks hours in advance.
 3. **Strict Epistemic Certainty:** High-confidence matches cite the exact manufacturer service manual section (e.g. *Kidde KN-COPP-3 Manual §4.2*). Low-confidence events are labeled ambiguous and stage non-destructive investigation proposals.
-4. **Zero Raw Audio Storage:** Raw audio buffers are processed in volatile RAM and immediately scrubbed using `ctypes.memset`. Zero audio bytes ever touch persistent disk.
+4. **Audio Non-Persistence & Best-Effort Volatile Clearing:** Audio is never written to disk, logs, or SQLite database (verified by automated scan test `test_audio_never_persisted_to_disk_or_db`). In-memory audio buffers are cleared best-effort immediately following feature extraction using `data.fill(0.0)`.
 5. **Strict Propose $\rightarrow$ Confirm Trust Boundary:** The system stages structured replacement proposals; it **never** auto-orders parts or mutates hardware without user confirmation.
 
 ---
 
 ## 3. The Problem & Economic Stakes: The 3:14 AM Crisis
 
-Across 142 million homes in the United States, every household averages 22 legacy piezoceramic transducers and buzzers: smoke alarms, carbon monoxide detectors, dehumidifiers, water leak sensors, and refrigerator evaporators. When these devices malfunction or expire, they emit an ambiguous, piercing chirp.
+Across 142 million US housing units (US Census Bureau), homes contain dozens of unmonitored piezoceramic transducers and buzzers: smoke alarms, carbon monoxide detectors, dehumidifiers, water leak sensors, and refrigerator evaporators. When these devices malfunction or expire, they emit an ambiguous, piercing chirp.
 
 For ten thousand years of humans living in houses, no home has ever been able to say what is wrong. The consequence is not merely groggy frustration at 3:14 AM; it is catastrophic economic and physical loss:
 
 | Economic & Life-Safety Dimension | Quantified National Impact | Root Cause Addressed by GENIUS |
 | :--- | :--- | :--- |
-| **Residential Water Damage** | **\$12,500** Average Insurance Claim | Slow appliance leaks and unaddressed leak sensor beeps cause structural flooding and toxic black mold before discovery. |
-| **Frozen Pipe Bursts** | **\$15,000+** Catastrophic Claim | Aging heating equipment locks out during sub-freezing cold snaps. Plumbing freezes solid within 28 hours. |
-| **Unnecessary Truck Rolls** | **\$89 – \$150** Dispatch Fee (\$120/hr) | Homeowners pay professional service dispatches simply to replace a 9V battery or reset a tripped GFCI breaker. |
-| **Life Safety Failures** | **71%** CO Sensor Fatal Errors | Homeowners mistake the 30-second end-of-life expiration chirp for a low-battery alert, insert a new battery, and leave an inert chemical sensor monitoring lethal gas. |
+| **Residential Water Damage** | **\$12,514** Average Insurance Claim *(Source: Insurance Information Institute / ISO Homeowners Claim Study)* | Slow appliance leaks and unaddressed leak sensor beeps cause structural flooding and toxic black mold before discovery. |
+| **Frozen Pipe Bursts** | **\$15,000–\$20,000** Catastrophic Claim *(Source: State Farm Winter Storm Claims Data)* | Aging heating equipment locks out during sub-freezing cold snaps. Plumbing freezes solid within 28 hours. |
+| **Unnecessary Truck Rolls** | **\$89 – \$150** Diagnostic Fee *(Source: HomeAdvisor / Angi 2024 Trade Survey)* | Homeowners pay professional service dispatches simply to replace a 9V battery or reset a tripped GFCI breaker. |
+| **Life Safety Failures** | **High False-Remediation Rate** *(Source: CPSC & NFPA Residential Alarm Studies)* | Homeowners mistake the 30-second end-of-life expiration chirp for a low-battery alert, insert a new battery, and leave an inert chemical sensor monitoring lethal gas. |
 
 ---
 
@@ -135,7 +135,7 @@ GENIUS is architected as an asynchronous, distributed home infrastructure operat
 |   | 12 MCP Tools             |  | Ephemeral Audio Pipeline |  | Home Graph       |  |
 |   | - hear_sound             |  | - Hilbert Transform A(t) |  | (SQLite DB)      |  |
 |   | - diagnose               |  | - Hann-Window Peak FFT   |  | - Hardware Nodes |  |
-|   | - diagnose_from_desc     |  | - ctypes.memset Zero-Wipe|  | - Weibull R(t)   |  |
+|   | - diagnose_from_desc     |  | - Volatile Memory Scrub  |  | - Weibull R(t)   |  |
 |   | - list_entities          |  | - beepdb Fingerprint DB  |  | - Provenance     |  |
 |   | - get_home_health        |  +--------------------------+  | - Incident Log   |  |
 |   | - propose_action         |                                +------------------+  |
@@ -184,20 +184,18 @@ $$\Phi = \Big(\Delta t_{\text{cadence}}, \, f_{\text{peak}}, \, \tau_{\text{puls
 * **$f_{\text{peak}}$:** Primary resonant frequency determined via Hann-windowed Fast Fourier Transform (FFT).
 * **$\tau_{\text{pulse}}$:** Half-power pulse width (e.g. $80\text{ ms}$).
 
-### Zero-Byte Disk Persistence & Active RAM Zero-Wiping
-To preserve strict domestic privacy, raw PCM audio bytes are processed strictly in volatile RAM. As soon as the feature triplet $\Phi$ is extracted, GENIUS actively wipes the memory buffer:
+### Audio Non-Persistence & Best-Effort Volatile Buffer Clearing
+To preserve strict domestic privacy, raw PCM audio bytes are processed strictly in volatile RAM. Audio is never written to disk, logs, or persistent SQLite DB (verified by automated scan test `test_audio_never_persisted_to_disk_or_db`). As soon as the feature triplet $\Phi$ is extracted, in-memory buffers are cleared best-effort:
 
 ```python
 # audio/ephemeral.py
-import ctypes
-
-def scrub_volatile_buffer(buffer: bytearray) -> None:
-    """Overwrites raw PCM memory addresses with zeros before garbage collection."""
-    location = (ctypes.c_char * len(buffer)).from_buffer(buffer)
-    ctypes.memset(ctypes.addressof(location), 0, len(buffer))
+def scrub_volatile_buffer(buffer: np.ndarray) -> None:
+    """Clears in-memory array values immediately following feature extraction."""
+    if isinstance(buffer, np.ndarray):
+        buffer.fill(0.0)
 ```
 
-This guarantees **zero audio bytes** are ever written to disk, SQLite, or external cloud logs.
+This, combined with our zero-retention pipeline design, ensures that raw audio is discarded in flight and zero audio bytes are persisted to disk, database, or external logs.
 
 ---
 
@@ -274,9 +272,13 @@ Solving for the freeze threshold ($T_{\text{pipe}} = 32^\circ\text{F}$):
 
 $$t_{\text{freeze}} = -\tau_{\text{pipe}} \cdot \ln\left(\frac{32 - T_{\text{out}}}{T_{\text{in}}(0) - T_{\text{out}}}\right) = -16.0 \cdot \ln\left(\frac{32 - 24}{68 - 24}\right) = -16.0 \cdot \ln\left(\frac{8}{44}\right) \approx \mathbf{27.3\text{ hours}}$$
 
-*(Note: The main insulated living envelope reaches freezing in $-28.0 \cdot \ln(8/44) = 47.7\text{ hours}$, but exterior pipe runs freeze in $27.3\text{ hours}$, creating acute burst risks ahead of general room freezing).*
+*(Note: The main insulated living envelope reaches freezing in $-28.0 \cdot \ln(8/44) = 47.7\text{ hours}$, but exterior unheated pipe cavity runs freeze in $27.3\text{ hours}$, creating freeze risks well ahead of general room freezing).*
 
-To account for stochastic forecast errors ($T_{\text{out}} \sim \mathcal{N}(24, 2.5^\circ\text{F})$) and building variance ($\tau_{\text{pipe}} \sim \text{Lognormal}(\ln(16), 0.3)$), the Proactive Engine evaluates a 5,000-run Monte Carlo simulation, determining a **94.1% empirical freeze probability** within 48 hours. GENIUS alerts the homeowner unprompted via SSE **27 hours before** water pipes expand and burst.
+To account for forecast error ($T_{\text{out}} \sim \mathcal{N}(24, 2.5^\circ\text{F})$) and building variance ($\tau_{\text{pipe}} \sim \text{Lognormal}(\ln(16), 0.3)$), the Proactive Engine evaluates a 5,000-run Monte Carlo simulation:
+
+$$P(\text{pipe zone hits } 32^\circ\text{F within } 48\text{ h} \mid \text{heat off, } 24^\circ\text{F outside, assumed } \tau_{\text{pipe}} \sim \text{Lognormal}(\ln(16), 0.3)) = \mathbf{94.1\%}$$
+
+*Sensitivity Analysis:* This probability depends directly on the unheated cavity prior ($\tau_{\text{pipe}} = 16\text{ h}$). Under a less exposed cavity ($\tau = 24\text{ h}$), freeze probability drops to $66\%$; with whole-house thermal inertia ($\tau = 35\text{ h}$), it falls to $25\%$. In severe draft scenarios (10th percentile), freezing occurs in as little as **$\sim 18.2\text{ hours}$**. GENIUS issues proactive alerts unprompted via SSE well before temperatures reach freezing.
 
 ---
 
@@ -416,10 +418,12 @@ pip install git+https://github.com/patriceai-code/beepdb.git
 beepdb match --freq 3200 --interval 30.0
 
 # Output:
-# Matched: Kidde KN-COPP-3 Carbon Monoxide Alarm
-# Type: End-of-Life Expiration Chirp (Sensor Exhaustion)
-# Citation: Kidde Service Manual §4.2 (https://www.kidde.com/...)
-# Confidence: 98.4%
+# [MATCH] beepdb Acoustic Match Result:
+#   Device:     Kidde Co Detector
+#   Meaning:    End Of Life (CRITICAL)
+#   Confidence: 99%
+#   Action:     replace_unit;propose_purchase
+#   Source:     https://www.kidde.com/home-safety/en/us/support/help-center/browse-articles/articles/what-do-the-beeps-mean-on-my-co-alarm.html
 ```
 
 ### Physical Piezo Drift Calibration:
@@ -442,14 +446,14 @@ python benchmarks/run_benchmarks.py
 | Pipeline Dimension | Measured Performance | Physical Meaning & Verification Method |
 | :--- | :--- | :--- |
 | **DSP Feature Extraction** | **9.80 ms** | In-flight Hann-windowed FFT + Hilbert amplitude envelope extraction. Sub-50ms constraint satisfied. |
-| **Volatile In-Flight RAM Scrubbing** | **0.004 ms** | Active memory overwrite via `data.fill(0.0)`. Guarantees 0 raw audio bytes stored on disk. |
-| **`beepdb` Signature Search** | **0.016 ms** | In-memory search against 20 calibrated device classes with tolerance bands. |
+| **Volatile In-Flight RAM Scrubbing** | **0.005 ms** | Best-effort volatile memory overwrite via `data.fill(0.0)` following FFT. (Zero disk persistence verified separately by automated filesystem and DB scan test). |
+| **`beepdb` Signature Search** | **0.015 ms** | In-memory search against 20 calibrated device classes with tolerance bands. |
 | **Home Graph SQLite Write** | **3.70 ms** | ACID persistent transaction with immutable provenance auditing. |
 | **Total Local Pipeline Latency** | **13.52 ms** | Real-time edge processing before network hops (sum matches individual stages). |
 | **Bedrock Nova Pro Deliberation** | **2,640 ms** | Live cloud roundtrip to `amazon.nova-pro-v1:0` evaluating 5-year TCO economics. |
 | **Polly Neural TTS TTFB** | **180 ms** | Time-to-first-byte streaming Amazon Polly `Joanna` neural voice audio. |
-| **Physical Piezo Accuracy** | **100.0% (6/6)** | Verified on real hardware recordings (Bloofrzo CC0 piezo transducers). |
-| **Synthetic Baseline Corpus** | **95.0% (19/20)** | Evaluated across 20 appliance classes (smoke, CO, leaks, fridges, UPS). |
+| **Physical Piezo Accuracy** | **100.0% (6/6)\*** | Verified on real hardware recordings (Bloofrzo CC0 piezo transducers). |
+| **Synthetic Baseline Corpus** | **95.0% (19/20)\*\*** | Evaluated across 20 appliance classes (smoke, CO, leaks, fridges, UPS). |
 | **Ambient Noise Robustness** | **90.0% (9/10)** | Mixed with real domestic room noise bed at **+15 dB SNR**. |
 | **Heavy Domestic Noise Gate** | **90.0% (9/10)** | Mixed under loud domestic kitchen background noise at **+6 dB SNR**. |
 
@@ -462,8 +466,8 @@ In the spirit of scientific transparency, we explicitly document the operational
 1. **Acoustic Edge Mic vs. Alexa+ Voice Model:** Alexa+ MCP tools receive structured arguments extracted from speech by the frontier model; Alexa does not stream raw room audio to third-party MCP servers. GENIUS provides a dual path:
    - Voice-Native (`diagnose_from_description`): Alexa asks *"How long between beeps? Single or multiple chirps? What brand is on the front?"* and matches directly on conversation parameters.
    - Companion Edge Mic (`hear_sound`): An external microphone (phone, tablet, or ESP32) captures in-flight clips and submits them to the MCP server.
-2. **DSP Validation vs. Device Identification:** The 19/20 synthetic benchmark validates that our DSP accurately recovers physical parameters $(\Delta t, f_{\text{peak}}, \tau_{\text{pulse}})$ from audio; it does not replace testing on 20 distinct physical alarm units.
-3. **Piezo Drift Calibration:** Calibrated tolerance bands ($\pm 350\text{ Hz}$) were measured on Bloofrzo CC0 piezoceramic hardware transducers. While characteristic of 3 kHz buzzers, production Kidde and First Alert units exhibit unit-to-unit manufacturing variations.
+2. **DSP Validation vs. Device Identification:** The 19/20 synthetic benchmark validates that our DSP accurately recovers physical parameters $(\Delta t, f_{\text{peak}}, \tau_{\text{pulse}})$ from audio; it does not replace testing on 20 distinct physical alarm units. The single synthetic mismatch (clip 04) occurred because Kidde i9010 smoke detector low-battery (30s cadence, 3,100 Hz) falls within 100 Hz of Kidde CO end-of-life (30s cadence, 3,200 Hz), which the matcher conservatively classifies at the higher critical severity level.
+3. **Physical Piezo Calibration Scope vs Held-Out Data:** Our 100% (6/6) physical recording evaluation was conducted on physical piezo recordings from which our $\pm 350\text{ Hz}$ empirical tolerance window was calibrated. It validates that physical piezo resonance drift is accommodated by our tolerance schema, but does not constitute an uncalibrated held-out machine learning test split.
 4. **Appliance Error Mechanisms:** While smoke/CO/water alarms emit audible square-wave chirps, residential furnaces (such as Carrier units) primarily signal fault diagnostics via optical LED flash codes on the control board. The Carrier entry in `codes.csv` is modeled for smart thermostats or external pressure switches.
 5. **Simulated Telemetry Boundaries:** The order confirmation ID (`AMZN-2026-94819`) and proactive package delivery push are simulated demonstration triggers; no live Amazon Prime logistics API integration exists in this hackathon release.
 
@@ -486,7 +490,7 @@ collected 19 items
 tests/test_audio_persistence.py::test_audio_never_persisted_to_disk_or_db PASSED [  5%]
 tests/test_loop.py::test_state_remembers_across_loops PASSED             [ 10%]
 tests/test_matcher.py::TestAcousticMatcherGate::test_ephemeral_zero_retention_attestation PASSED [ 15%]
-tests/test_matcher.py::TestAcousticMatcherGate::test_10_of_10_acoustic_gate PASSED [ 21%]
+tests/test_matcher.py::TestAcousticMatcherGate::test_acoustic_diverse_devices_gate PASSED [ 21%]
 tests/test_matcher.py::TestAcousticMatcherGate::test_real_physical_recordings_gate PASSED [ 26%]
 tests/test_matcher.py::TestAcousticMatcherGate::test_end_to_end_core_loop PASSED [ 31%]
 tests/test_matcher.py::TestAcousticMatcherGate::test_acoustic_noise_robustness_two_levels PASSED [ 36%]
@@ -602,7 +606,7 @@ GENIUS automatically files structured warranty claim dossiers for failed in-warr
 | :--- | :--- | :--- |
 | **Phase 0** | **Spec & Handshake Groundwork** | Established FastMCP server adhering to 2025-11-25 Streamable HTTP transport spec. Authored initial ADRs. |
 | **Phase 1** | **FastMCP Skeleton & Graph Store** | Built SQLite schema with immutable provenance tracking, UUID keys, and initial 7 MCP tools. |
-| **Phase 2** | **Ephemeral DSP & Privacy Core** | Implemented Hilbert analytic envelope $A(t)$, Hann FFT, and volatile memory scrubbing (`ctypes.memset`). |
+| **Phase 2** | **Ephemeral DSP & Privacy Core** | Implemented Hilbert analytic envelope $A(t)$, Hann FFT, and volatile memory scrubbing (`data.fill(0.0)`). |
 | **Phase 3** | **Open Source `beepdb` Package** | Extracted 20 device acoustic signatures with manual citations, built standalone CLI and `pyproject.toml`. |
 | **Phase 4** | **Proactive Push Engine** | Built SSE `/events` dispatcher, unprompted follow-up state machine, and tablet notification banners. |
 | **Phase 5** | **Amazon Bedrock & Polly Integration** | Integrated Amazon Nova Pro (`amazon.nova-pro-v1:0`) and Amazon Polly neural speech synthesis (`Joanna`). |
@@ -610,7 +614,7 @@ GENIUS automatically files structured warranty claim dossiers for failed in-warr
 | **Phase 7** | **Physical Calibration & Noise Gates** | Calibrated piezo frequency drift against real Bloofrzo CC0 hardware and added +15 dB / +6 dB noise test gates. |
 | **Phase 8** | **AWS Cloud S3 Deployment** | Migrated tablet simulator and 28 CC0 audio clips to AWS S3 Static Website Hosting with public read policies. |
 | **Phase 9** | **Continuous Reliability & Physics** | Implemented continuous Weibull reliability hazard modeling ($R(t)$) and lumped-capacitance freeze simulations. |
-| **Phase 10** | **Empirical Benchmarks & Submissions** | Built `benchmarks/run_benchmarks.py`, completed 17/17 test suite, and authored comprehensive submission package. |
+| **Phase 10** | **Empirical Benchmarks & Submissions** | Built `benchmarks/run_benchmarks.py`, completed 19/19 test suite, and authored comprehensive submission package. |
 
 ---
 
@@ -621,7 +625,7 @@ GENIUS automatically files structured warranty claim dossiers for failed in-warr
 | Timestamp | Story Beat | Action & Dialogue | Visual Surface |
 | :--- | :--- | :--- | :--- |
 | **0:00 – 0:15** | **The Problem & Setup** | *"It’s 3:14 AM and something in your home is chirping. Is it smoke? Carbon monoxide? Low battery? For ten thousand years, houses have known what's wrong, but could never say it. This is GENIUS."* | Tablet displays clean Home Dashboard with mandatory header: **"ALEXA+ PREVIEW DEVICE SIMULATOR"**. |
-| **0:15 – 0:35** | **The Acoustic Diagnosis** | **User:** *"Alexa, what's that sound?"*<br>*(Physical 30s Kidde chirp plays aloud)*<br>**GENIUS (Polly Voice):** *"That's your hallway Carbon Monoxide detector's end-of-life chirp — not a low battery. Sensor expired after 7 years. I've prepared a replacement order proposal for your review."* | **Acoustic Evidence Card** renders with 30s interval marker, 3.2 kHz peak frequency, and Kidde manual §4.2 citation. |
+| **0:15 – 0:35** | **Voice-Native Alexa+ Diagnosis** | **User:** *"Alexa, there's a loud chirp in my hallway."*<br>**Alexa (Polly Voice):** *"I can help identify that. How many seconds between chirps, and is it a single chirp or a pattern?"*<br>**User:** *"It's chirping once every 30 seconds, single beep. The faceplate says Kidde."*<br>**GENIUS:** *"That's your hallway Kidde Carbon Monoxide detector signaling end-of-life — not a low battery. Sensor expired after 7 years. I've prepared a replacement order proposal for your review."*<br>*(On-screen note: "For companion edge microphones or smartphone recordings, GENIUS also supports `hear_sound` for sub-15ms FFT feature extraction.")* | **Acoustic Evidence Card** renders with 30s interval marker, 3.2 kHz peak frequency, and Kidde manual §4.2 citation. |
 | **0:35 – 0:50** | **Propose $\rightarrow$ Confirm** | **User:** *"Confirm replacement."*<br>*(Taps 'Confirm Replacement ($34.99)')*<br>**GENIUS:** *"Replacement Kidde unit ordered. Tracking registered in your home graph for proactive follow-up."* | Proposal card status transitions to **Confirmed & Dispatched** (Order Ref: AMZN-2026-94819). |
 | **0:50 – 1:10** | **The House Speaks First (Proactivity)** | *(Amber banner slides down automatically, Polly neural voice speaks)*<br>**GENIUS:** *"Your replacement carbon monoxide alarm just arrived on your front porch. Would you like me to walk you through replacing the hallway unit?"* | Banner renders with interactive **"Walk me through replacement"** button. User clicks; step-by-step guidance displays. |
 | **1:10 – 1:25** | **Privacy & Reliability Surface** | **User:** *"Where did you learn this?"*<br>Opens **What Does GENIUS Know?** inspector showing every fact tagged with verifiable provenance and **Zero Raw Audio Persistence** badge. | Shows Weibull fleet reliability score (88.5%) and proof that acoustic processing ran FFT in volatile RAM and immediately discarded raw audio. |
@@ -652,7 +656,7 @@ GENIUS automatically files structured warranty claim dossiers for failed in-warr
 
 | Judging Criterion | How GENIUS Fulfills Evaluation Criteria | Empirical Proof / Receipt |
 | :--- | :--- | :--- |
-| **1. Tech Implementation**<br>*(Execution & Tech Leverage)* | • **Alexa+ Track:** 100% compliant self-hosted FastMCP Server speaking **MCP Streamable HTTP (2025-11-25)**, validated with the official MCP Python SDK `StreamableHTTPClient` reference client.<br>• **12 Strictly Typed MCP Tools:** Full coverage across edge acoustics, voice-native diagnosis (`diagnose_from_description`), state auditing, and safety gates.<br>• **AWS Builder Mini-Challenge:** 100% Amazon infrastructure using **Amazon Bedrock Nova Pro** (`amazon.nova-pro-v1:0`) for 5-yr TCO deliberation & tag vision, **Amazon Polly Neural TTS** (`Joanna`), and **AWS S3 Static Website Hosting**.<br>• **Open Source Mini-Challenge:** Standalone PyPI package [`beepdb`](https://github.com/patriceai-code/beepdb) with CLI, MIT code, and CC-BY 4.0 data.<br>• **Deterministic DSP & Privacy by Construction:** Hilbert transform analytic envelope $A(t)$ and active memory scrubbing proving zero bytes stored to disk. | • **19/19 Passing Tests** in 6.64s on Python 3.11/3.12 CI.<br>• **Total Local Pipeline Latency:** **13.52 ms** (measured sum of DSP, scrub, search, and SQLite).<br>• **100% Physical Accuracy** on Bloofrzo CC0 piezo hardware.<br>• Live Bedrock Nova Pro latency: **2,640 ms**.<br>• Polly Neural TTS TTFB: **180 ms**. |
+| **1. Tech Implementation**<br>*(Execution & Tech Leverage)* | • **Alexa+ Track:** 100% compliant self-hosted FastMCP Server speaking **MCP Streamable HTTP (2025-11-25)**, validated with the official MCP Python SDK `StreamableHTTPClient` reference client.<br>• **12 Strictly Typed MCP Tools:** Full coverage across edge acoustics, voice-native diagnosis (`diagnose_from_description`), state auditing, and safety gates.<br>• **AWS Builder Mini-Challenge:** 100% Amazon infrastructure using **Amazon Bedrock Nova Pro** (`amazon.nova-pro-v1:0`) for 5-yr TCO deliberation & tag vision, **Amazon Polly Neural TTS** (`Joanna`), and **AWS S3 Static Website Hosting**.<br>• **Open Source Mini-Challenge:** Standalone package [`beepdb`](https://github.com/patriceai-code/beepdb) with CLI, MIT code, and CC-BY 4.0 data.<br>• **Deterministic DSP & Privacy by Construction:** Hilbert transform analytic envelope $A(t)$ and volatile memory scrubbing proving zero bytes stored to disk. | • **19/19 Passing Tests** in 6.64s on Python 3.11/3.12 CI.<br>• **Total Local Pipeline Latency:** **13.52 ms** (measured sum of DSP, scrub, search, and SQLite).<br>• **100% Physical Accuracy** on Bloofrzo CC0 piezo hardware.<br>• Live Bedrock Nova Pro latency: **2,640 ms**.<br>• Polly Neural TTS TTFB: **180 ms**. |
 | **2. Design**<br>*(Coherence & Platform Fit)* | • **Voice-First Multimodal Synergy:** Designed specifically for Echo & Alexa+ preview devices. Natural voice handles the immediate acoustic query, while the visual surface (tablet simulator / Echo Show) renders rich **Acoustic Evidence Cards** with manual citations without verbal clutter.<br>• **The House Speaks First:** Proactive Server-Sent Events (SSE) push unprompted amber notification cards when a replacement part arrives.<br>• **Strict Propose $\rightarrow$ Confirm Trust Boundary:** Protects customer peace-of-mind by never executing transactions without explicit confirmation.<br>• **Privacy Surface:** *"What Does GENIUS Know?"* provides transparent provenance inspection and consent toggles. | • **Live Cloud Simulator:** Hosted on AWS S3 with interactive demo controls and 28 CC0 audio test clips.<br>• **ADR 001, 002, 003** documenting clean architectural patterns. |
 | **3. Potential Impact**<br>*(Customer Need & Viability)* | • **Ubiquitous Need:** Solves the 3:14 AM chirping crisis across residential homes containing unmonitored piezoceramic transducers.<br>• **Massive Loss Prevention:** Mitigates residential water leaks and frozen pipe bursts via continuous building thermodynamics.<br>• **Life Safety:** Eliminates confusion where homeowners mistake expired CO alarms for low batteries.<br>• **Viable Beyond Hackathon:** 4 sustainable revenue engines: Prime fulfillment GMV (45%), carrier loss-mitigation telemetry (30%), Alexa+ \$9.99/mo retention (15%), and warranty claim recovery (10%). | • **Lumped-Capacitance Math:** $\tau_{\text{pipe}} = 16.0\text{h}$ predicts pipe zone freezing in $27.3\text{ hours}$ at $24^\circ\text{F}$; 5,000-run Monte Carlo yields **94.1% freeze risk**.<br>• Fully articulated business model with unit economics. |
 | **4. Quality of the Idea**<br>*(Creativity & Ecosystem Mastery)* | • **From Chatbot to World-Model:** Transcends naive LLM wrappers by giving the home a continuous physical mental model that Alexa **wears**.<br>• **Mathematical Rigor:** Continuous two-parameter Weibull reliability distributions ($R(t) = \exp(-(t/\eta)^\beta)$) and dynamic fleet scores ($\bar{R}_{\text{fleet}}$).<br>• **Acoustic Privacy by Construction:** Overcomes smart home audio surveillance anxiety by actively clearing buffers immediately after FFT feature extraction and verifying zero disk retention.<br>• **Deep MCP Ecosystem Mastery:** Pioneers spec-compliant proactive push patterns over Streamable HTTP and structured proposal workflows. | • [github.com/patriceai-code/genius](https://github.com/patriceai-code/genius)<br>• [github.com/patriceai-code/beepdb](https://github.com/patriceai-code/beepdb)<br>• 12 registered MCP tools conforming to spec 2025-11-25. |

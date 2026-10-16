@@ -22,13 +22,13 @@ Use this document to copy and paste your submission directly into the [Devpost S
 ## 2. Devpost Text Description (Copy & Paste into "About the Project")
 
 ### 1. The Problem & Economic Stakes: The 3:14 AM Crisis
-Across 142 million homes in the United States, every household averages 22 legacy piezoceramic transducers and buzzers: smoke alarms, carbon monoxide detectors, dehumidifiers, water leak sensors, and refrigerator evaporators. When these devices malfunction or expire, they emit an ambiguous, piercing chirp. 
+Across 142 million US housing units (US Census Bureau), homes contain dozens of unmonitored piezoceramic transducers and buzzers: smoke alarms, carbon monoxide detectors, dehumidifiers, water leak sensors, and refrigerator evaporators. When these devices malfunction or expire, they emit an ambiguous, piercing chirp. 
 
 For ten thousand years of humans living in houses, no home has ever been able to say what is wrong. The consequence is not merely groggy frustration at 3:14 AM; it is catastrophic economic and physical loss:
-* **$12,500 Average Water Damage Loss:** Undetected appliance overflows and leak sensor beeps that go unaddressed cause over \$12,500 in residential water and mold remediation.
-* **$15,000+ Frozen Pipe Bursts:** Aging furnaces locking out during sub-freezing cold snaps freeze residential plumbing within 28 hours.
-* **$120/hr Unnecessary Truck Rolls:** Homeowners routinely pay \$89–\$150 service dispatch fees for technicians simply to replace a 9V battery or reset a tripped GFCI breaker.
-* **Life Safety Failures:** **71%** of residential carbon monoxide sensor failures occur because homeowners mistake the 30-second end-of-life expiration chirp for a low-battery alert, insert a new battery, and leave an expired, inert chemical sensor monitoring lethal gas.
+* **$12,514 Average Water Damage Loss:** Undetected appliance overflows and leak sensor beeps that go unaddressed cause over \$12,514 in residential water damage and mold remediation *(Source: Insurance Information Institute / ISO Homeowners Claim Study)*.
+* **$15,000–$20,000 Frozen Pipe Bursts:** Aging furnaces locking out during sub-freezing cold snaps freeze residential plumbing within 28 hours *(Source: State Farm Winter Storm Claims Data)*.
+* **$89–$150 Unnecessary Truck Rolls:** Homeowners routinely pay \$89–\$150 service dispatch fees for technicians simply to replace a 9V battery or reset a tripped breaker *(Source: HomeAdvisor / Angi 2024 Trade Survey)*.
+* **Life Safety Failures:** Residential alarm studies *(CPSC & NFPA)* indicate homeowners frequently mistake the 30-second end-of-life expiration chirp for a low-battery alert, swap the battery, and leave an expired chemical sensor monitoring lethal gas.
 
 **GENIUS** (*Graph Engine for Networked Infrastructure Understanding & Service*) is a self-hosted Model Context Protocol (MCP) server (spec 2025-11-25, Streamable HTTP transport) that gives the home a persistent mental model. Rather than treating Alexa as a voice frontend calling isolated tools from a drawer, GENIUS treats the home as an evolving physical world model that Alexa **wears**.
 
@@ -57,7 +57,7 @@ GENIUS does not rely on vague prompt engineering or black-box LLM guessing. It e
 #### Pillar 1: Deterministic Ephemeral DSP (<15ms Local Processing)
 High-frequency (3 kHz+) oscillating piezo square waves break classic zero-crossing algorithms. GENIUS computes the continuous analytic signal envelope using the Hilbert transform:
 $$A(t) = \big|s(t) + i \cdot \mathcal{H}\{s(t)\}\big|$$
-Extracts the exact physical feature triplet: $(\Delta t_{\text{cadence}}, f_{\text{peak}}, \tau_{\text{pulse}})$. Ingests audio ephemerally in volatile RAM and immediately clears buffers, guaranteeing zero raw audio bytes are ever written to disk, logs, or persistent database (attested by automated test `test_audio_never_persisted_to_disk_or_db`).
+Extracts the exact physical feature triplet: $(\Delta t_{\text{cadence}}, f_{\text{peak}}, \tau_{\text{pulse}})$. Ingests audio ephemerally in volatile RAM and immediately clears buffers best-effort via `data.fill(0.0)`. Audio is never written to disk, logs, or persistent SQLite DB (verified by automated scan test `test_audio_never_persisted_to_disk_or_db`).
 
 #### Pillar 2: Persistent Mathematical World-Model (Continuous Reliability & Thermodynamics)
 The home does not jump between arbitrary state labels. Equipment health is continuously governed by two-parameter Weibull reliability distributions:
@@ -66,7 +66,7 @@ $$R(t) = \exp\left(-\left(\frac{t}{\eta}\right)^\beta\right), \quad h(t) = \frac
 
 Before issuing proactive warnings, the Proactive Engine numerically simulates residential heat loss using a lumped-capacitance differential equation:
 $$\frac{dT_{\text{in}}}{dt} = -\frac{1}{\tau} (T_{\text{in}} - T_{\text{out}}) + \frac{Q_{\text{furnace}}}{C_{\text{thermal}}}$$
-Evaluating counterfactual futures: For vulnerable pipe zones in unheated cavities ($\tau_{\text{pipe}} \approx 16.0\text{ hours}$), an unmitigated furnace trip at $24^\circ\text{F}$ outdoor ambient causes pipe temperatures to hit freezing ($32^\circ\text{F}$) in $t = -16.0 \cdot \ln(8/44) = \mathbf{27.3\text{ hours}}$. A 5,000-run Monte Carlo simulation accounting for weather forecast error ($T_{\text{out}} \sim \mathcal{N}(24, 2.5^\circ\text{F})$) establishes a **94.1% empirical freeze risk** within 48 hours.
+Evaluating counterfactual futures: For vulnerable pipe zones in unheated cavities ($\tau_{\text{pipe}} \approx 16.0\text{ hours}$), an unmitigated furnace trip at $24^\circ\text{F}$ outdoor ambient causes pipe temperatures to hit freezing ($32^\circ\text{F}$) in $t = -16.0 \cdot \ln(8/44) = \mathbf{27.3\text{ hours}}$. Conditioned on this prior ($\tau_{\text{pipe}} \sim \text{Lognormal}(\ln(16), 0.3)$), a 5,000-run Monte Carlo simulation establishes a **94.1% empirical freeze risk** within 48 hours (with 10th percentile freeze occurring in as little as **$\sim 18.2\text{ hours}$**).
 
 #### Pillar 3: Amazon Bedrock Specialist Deliberation & Alexa+ Proactivity
 * **Amazon Bedrock Nova Pro (`amazon.nova-pro-v1:0`):** Evaluates multi-factor engineering economics—calculating 5-year repair vs. replace TCO, R-410A refrigerant phaseouts, and SEER energy efficiency payback periods in **2.6 seconds**.
@@ -86,12 +86,12 @@ To eliminate blind trust, GENIUS includes an automated empirical benchmark suite
 | **Ambient Noise Robustness** | **90.0% (9/10)** | Mixed with real domestic room noise bed at **+15 dB SNR** |
 | **Heavy Noise Gate** | **90.0% (9/10)** | Mixed under loud kitchen/domestic noise at **+6 dB SNR** |
 | **DSP Feature Extraction** | **9.80 ms** | In-flight Hann-windowed FFT + Hilbert amplitude envelope |
-| **Volatile In-Flight Scrubbing** | **0.004 ms** | Active memory overwrite via `data.fill(0.0)`; 0 raw audio bytes persisted |
-| **beepdb Signature Search** | **0.016 ms** | 20-device signature search against physical tolerance bands |
+| **Volatile In-Flight Scrubbing** | **0.005 ms** | In-memory zeroing via `data.fill(0.0)`; 0 raw audio bytes persisted |
+| **beepdb Signature Search** | **0.015 ms** | 20-device signature search against physical tolerance bands |
 | **Home Graph Ledger Write** | **3.70 ms** | SQLite persistent write with full auditable provenance |
 | **Total Local Pipeline Latency**| **13.52 ms** | Real-time edge latency (exact sum of local components) |
 | **Bedrock Deliberation Latency**| **2,640 ms** | Live Amazon Nova Pro structured JSON TCO deliberation |
-| **Polly Neural TTS TTFB** | **180 ms** | Live Amazon Polly neural streaming (`Joanna` / `Ruth`) |
+| **Polly Neural TTS TTFB** | **180 ms** | Live Amazon Polly neural streaming (`Joanna`) |
 | **Automated Test Suite** | **19/19 Passing (6.64s)** | Python 3.11 & 3.12 matrix on GitHub Actions CI |
 
 ---
@@ -145,7 +145,7 @@ GENIUS transforms Alexa from a passive voice utility into an essential home infr
 - [x] Primary Repo Public: [github.com/patriceai-code/genius](https://github.com/patriceai-code/genius)
 - [x] Open Source Library Public: [github.com/patriceai-code/beepdb](https://github.com/patriceai-code/beepdb)
 - [x] Live AWS S3 Simulator Endpoint: [http://genius-simulator-115207986956.s3-website.eu-west-2.amazonaws.com](http://genius-simulator-115207986956.s3-website.eu-west-2.amazonaws.com)
-- [x] 17/17 Passing Test Suite across Python 3.11 & 3.12 CI
+- [x] 19/19 Passing Test Suite across Python 3.11 & 3.12 CI
 - [ ] Record a video under 3:00 (following [demo/script.md](demo/script.md))
 - [ ] Upload video to YouTube (Public or Unlisted) and paste URL into Devpost
 - [ ] Paste Section 2 into the Devpost "About the Project" box
