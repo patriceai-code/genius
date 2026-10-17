@@ -27,7 +27,7 @@ class MCPConfig:
     
     # AWS Integration Settings
     aws_region: str = os.getenv("AWS_DEFAULT_REGION", "us-east-1")
-    bedrock_model_id: str = "anthropic.claude-3-5-sonnet-20241022-v2:0"
+    bedrock_model_id: str = os.getenv("BEDROCK_MODEL_ID", "amazon.nova-pro-v1:0")
     polly_voice_id: str = "Joanna"  # Neural Amazon Polly voice
 
     def to_dict(self) -> Dict[str, Any]:
