@@ -61,3 +61,11 @@ htmlcov/
 # Internal Planning Documents (kept locally, excluded from repo)
 *MASTER_PLAN*
 
+
+# Demo Video Intermediate Build Artifacts
+demo_production/ui_raw/
+demo_production/ui_clips/
+demo_production/synced_clips/
+demo_production/audio_temp/
+demo_production/audio_synced/
+demo_production/verification_frames/

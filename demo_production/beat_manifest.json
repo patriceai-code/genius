@@ -1,0 +1,117 @@
+[
+  {
+    "id": "act1_b1_title",
+    "act": 1,
+    "visual_type": "still",
+    "visual_file": "01_intro_title.png",
+    "prepend_chirp": true,
+    "narrator_text": "It's 3:14 AM, and something in your house is chirping. Is it smoke? Carbon monoxide? A dying battery? For ten thousand years, no house could ever say what is wrong. Meet GENIUS \u2014 the Home World Model for Alexa Plus.",
+    "audio_file": "demo_production\\audio_synced\\act1_b1_title.mp3",
+    "raw_duration": 12.792,
+    "duration": 12.992
+  },
+  {
+    "id": "act1_b2_problem",
+    "act": 1,
+    "visual_type": "still",
+    "visual_file": "02_problem_card.png",
+    "narrator_text": "Across 142 million U.S. homes, unmonitored alarms and appliances communicate only through ambiguous beeps. Mistaking a carbon monoxide end-of-life chirp for a low battery is a lethal safety hazard, while unaddressed leaks and furnace lockouts cause over fifteen billion dollars in annual residential damage.",
+    "audio_file": "demo_production\\audio_synced\\act1_b2_problem.mp3",
+    "raw_duration": 16.465,
+    "duration": 16.665
+  },
+  {
+    "id": "act2_b1_voice_diagnose",
+    "act": 2,
+    "visual_type": "ui_clip",
+    "visual_file": "ui_01_diagnose.mp4",
+    "narrator_text": "In our labeled Alexa Plus Device Simulator, connected live to our self-hosted Model Context Protocol server over Streamable HTTP, a homeowner asks about a 30-second hallway chirp. GENIUS matches beep-D-B and renders an Acoustic Evidence Card.",
+    "polly_text": "That's your hallway Carbon Monoxide detector's end-of-life chirp \u2014 not a low battery. The sensor expired after seven years.",
+    "audio_file": "demo_production\\audio_synced\\act2_b1_voice_diagnose.mp3",
+    "raw_duration": 19.599,
+    "duration": 19.799
+  },
+  {
+    "id": "act2_b2_physical_chirp",
+    "act": 2,
+    "visual_type": "ui_clip",
+    "visual_file": "ui_02_real_chirp.mp4",
+    "prepend_chirp": true,
+    "narrator_text": "For companion edge microphones, GENIUS also ingests raw audio via hear-sound \u2014 running a Hilbert envelope and Hann F-F-T in under 10 milliseconds to catch physical piezo resonance at 3,368 Hertz, while immediately scrubbing raw audio from volatile RAM.",
+    "audio_file": "demo_production\\audio_synced\\act2_b2_physical_chirp.mp3",
+    "raw_duration": 16.103,
+    "duration": 16.303
+  },
+  {
+    "id": "act2_b3_confirm",
+    "act": 2,
+    "visual_type": "ui_clip",
+    "visual_file": "ui_03_confirm.mp4",
+    "narrator_text": "Under our strict Propose-to-Confirm trust boundary, GENIUS never executes purchases autonomously. Only when the homeowner explicitly confirms does GENIUS dispatch the replacement order and schedule a proactive follow-up.",
+    "audio_file": "demo_production\\audio_synced\\act2_b3_confirm.mp3",
+    "raw_duration": 11.473,
+    "duration": 11.673
+  },
+  {
+    "id": "act2_b4_proactive_delivery",
+    "act": 2,
+    "visual_type": "ui_clip",
+    "visual_file": "ui_04_delivery.mp4",
+    "narrator_text": "When the replacement arrives, the house speaks first via unprompted Server-Sent Events.",
+    "polly_text": "Your replacement carbon monoxide alarm just arrived on your front porch. Would you like me to walk you through replacing the hallway unit?",
+    "audio_file": "demo_production\\audio_synced\\act2_b4_proactive_delivery.mp3",
+    "raw_duration": 11.098,
+    "duration": 11.298
+  },
+  {
+    "id": "act3_b1_architecture",
+    "act": 3,
+    "visual_type": "still",
+    "visual_file": "03_architecture_math.png",
+    "narrator_text": "Under the hood, GENIUS is not a black-box LLM wrapper. It unites deterministic signal processing with a continuous mathematical world model \u2014 tracking equipment wear-out via two-parameter Weibull hazard distributions and simulating building heat loss with lumped-capacitance differential equations.",
+    "audio_file": "demo_production\\audio_synced\\act3_b1_architecture.mp3",
+    "raw_duration": 14.976,
+    "duration": 15.176
+  },
+  {
+    "id": "act3_b2_freeze_health",
+    "act": 3,
+    "visual_type": "ui_clip",
+    "visual_file": "ui_05_freeze_health.mp4",
+    "narrator_text": "When outdoor temperatures drop to 24 degrees with an aging Carrier furnace, our simulation projects unheated pipe cavities reaching freezing in 27.3 hours \u2014 a 94.1 percent Monte Carlo freeze risk \u2014 triggering a proactive warning, fleet reliability scorecard, and live Amazon Bedrock Nova Pro repair-versus-replace deliberation.",
+    "audio_file": "demo_production\\audio_synced\\act3_b2_freeze_health.mp3",
+    "raw_duration": 18.078,
+    "duration": 18.278
+  },
+  {
+    "id": "act4_b1_privacy",
+    "act": 4,
+    "visual_type": "ui_clip",
+    "visual_file": "ui_06_privacy.mp4",
+    "narrator_text": "To eliminate smart-home surveillance anxiety, our privacy inspector shows the exact provenance of every stored fact, backed by an automated test verifying that zero bytes of raw audio ever touch disk or SQLite.",
+    "audio_file": "demo_production\\audio_synced\\act4_b1_privacy.mp3",
+    "raw_duration": 11.58,
+    "duration": 11.78
+  },
+  {
+    "id": "act4_b2_benchmarks_beepdb",
+    "act": 4,
+    "visual_type": "still",
+    "visual_file": "04_benchmarks_beepdb.png",
+    "narrator_text": "Every claim is backed by reproducible code: a 13.52 millisecond local pipeline, 100 percent accuracy on physical piezo recordings, 90 percent accuracy under heavy 6-decibel room noise, 19 passing test gates, and beep-D-B \u2014 our standalone open-source acoustic library under M-I-T and C-C-B-Y 4.0.",
+    "audio_file": "demo_production\\audio_synced\\act4_b2_benchmarks_beepdb.mp3",
+    "raw_duration": 18.778,
+    "duration": 18.978
+  },
+  {
+    "id": "act4_b3_business_outro",
+    "act": 4,
+    "visual_type": "still",
+    "visual_file": "05_outro_business.png",
+    "narrator_text": "By uniting Prime replacement fulfillment, insurance loss-mitigation, and warranty recovery, GENIUS turns Alexa Plus into an indispensable home custodian. GENIUS: every place has a genius. Yours finally speaks.",
+    "extra_padding": 1.2,
+    "audio_file": "demo_production\\audio_synced\\act4_b3_business_outro.mp3",
+    "raw_duration": 11.431,
+    "duration": 12.631
+  }
+]

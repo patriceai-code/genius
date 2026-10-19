@@ -37,8 +37,9 @@ body {
 /* Device Simulator Outer Frame */
 .device-frame {
   width: 100%;
-  max-width: 960px;
-  height: 860px;
+  max-width: 1560px;
+  height: 94vh;
+  min-height: 860px;
   background-color: var(--bg-space);
   border: 2px solid var(--border-subtle);
   border-radius: 24px;

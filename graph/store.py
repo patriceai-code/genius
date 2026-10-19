@@ -292,8 +292,9 @@ class HomeGraphStore:
             fleet_reliability = 1.0
             mean_degradation = 0.0
 
-        # Health score calculation (100 base, -25 for EOL, -10 for aging, -10 per critical incident)
-        score = max(0, min(100, 100 - (eol * 25) - (aging * 10) - (len(critical_incidents) * 10)))
+        # Health score calculation (100 base, bounded deduction for EOL/aging/incidents)
+        incident_penalty = min(10, len(critical_incidents) * 5)
+        score = max(15, min(100, 100 - (eol * 10) - (aging * 5) - incident_penalty))
 
         summary = f"{healthy} devices healthy. Continuous fleet reliability: {int(fleet_reliability * 100)}%."
         if eol > 0:

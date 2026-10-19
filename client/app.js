@@ -685,4 +685,8 @@ function appendChatMessage(sender, text, extraHtml = "") {
   
   thread.appendChild(msg);
   thread.scrollTop = thread.scrollHeight;
+  const conv = document.querySelector(".conversation-container");
+  if (conv) {
+    conv.scrollTop = conv.scrollHeight;
+  }
 }
