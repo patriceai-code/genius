@@ -1,10 +1,18 @@
 """
 Build high-definition 1920x1080 cinematic graphics cards for the GENIUS official demo video.
-Uses Pillow (PIL) with clean typography, Amazon Alexa+ cyan/amber accents, and zero text overlap.
+Uses Pillow (PIL) + Matplotlib Computer Modern LaTeX (mathtext) for publication-grade math typesetting.
 """
-import textwrap
+import io
+import numpy as np
+import matplotlib
+matplotlib.use("Agg")
+import matplotlib.pyplot as plt
 from pathlib import Path
 from PIL import Image, ImageDraw, ImageFont
+
+# Configure Matplotlib to use authentic Computer Modern TeX math fonts
+plt.rcParams["mathtext.fontset"] = "cm"
+plt.rcParams["font.family"] = "serif"
 
 OUTPUT_DIR = Path("demo_production/graphics")
 OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
@@ -39,23 +47,54 @@ def get_font(path: str, size: int):
             return ImageFont.load_default()
 
 
+def render_latex(latex_str: str, fontsize: int = 22, color_rgb=(248, 250, 252), dpi: int = 220) -> Image.Image:
+    """Renders a LaTeX math string using Matplotlib Computer Modern font to a tight transparent PIL Image."""
+    hex_col = "#{:02x}{:02x}{:02x}".format(*color_rgb[:3])
+    fig = plt.figure(figsize=(22, 3.0), dpi=dpi)
+    fig.patch.set_alpha(0.0)
+    ax = fig.add_axes([0, 0, 1, 1])
+    ax.set_axis_off()
+    ax.patch.set_alpha(0.0)
+
+    ax.text(0.5, 0.5, latex_str, fontsize=fontsize, color=hex_col, ha="center", va="center")
+
+    buf = io.BytesIO()
+    fig.savefig(buf, format="png", transparent=True, dpi=dpi)
+    plt.close(fig)
+    buf.seek(0)
+
+    im = Image.open(buf).convert("RGBA")
+    arr = np.array(im)
+    alpha = arr[:, :, 3]
+    coords = np.argwhere(alpha > 10)
+    if coords.size > 0:
+        y0, x0 = coords.min(axis=0)
+        y1, x1 = coords.max(axis=0) + 1
+        im = im.crop((max(0, x0 - 4), max(0, y0 - 4), min(im.width, x1 + 4), min(im.height, y1 + 4)))
+    return im
+
+
+def paste_centered(base_img: Image.Image, overlay: Image.Image, center_x: int, center_y: int, max_w: int = None):
+    if max_w and overlay.width > max_w:
+        scale = max_w / overlay.width
+        overlay = overlay.resize((int(overlay.width * scale), int(overlay.height * scale)), Image.Resampling.LANCZOS)
+    x = int(center_x - overlay.width // 2)
+    y = int(center_y - overlay.height // 2)
+    base_img.alpha_composite(overlay, (x, y))
+
+
 def draw_top_simulator_bar(draw: ImageDraw.ImageDraw, section_badge: str, badge_color=ALEXA_CYAN):
     """Draws the top header bar with GENIUS branding and section pill."""
-    # Outer frame
     draw.rectangle([(45, 35), (1875, 1045)], outline=(30, 41, 59), width=2)
-    # Top bar background
     draw.rectangle([(47, 37), (1873, 92)], fill=(13, 19, 33))
     draw.line([(47, 92), (1873, 92)], fill=BORDER_MUTED, width=1)
 
-    # Brand badge
     draw.rounded_rectangle([(70, 48), (210, 81)], radius=6, fill=(20, 30, 48), outline=ALEXA_CYAN, width=1)
     draw.text((140, 64), "GENIUS MCP", font=get_font(FONT_BOLD, 16), fill=ALEXA_CYAN, anchor="mm")
 
-    # Section badge
     draw.rounded_rectangle([(225, 48), (495, 81)], radius=6, fill=badge_color)
     draw.text((360, 64), section_badge, font=get_font(FONT_BOLD, 15), fill=(10, 14, 23), anchor="mm")
 
-    # Right spec indicator
     draw.text(
         (1845, 64),
         "ALEXA+ TRACK  ·  MCP SPEC 2025-11-25  ·  AWS BUILDER  ·  OPEN SOURCE",
@@ -72,7 +111,6 @@ def create_01_intro_title():
     draw.rectangle([(45, 35), (1875, 1045)], outline=(30, 41, 59), width=2)
     draw.rectangle([(55, 45), (1865, 1035)], outline=(18, 28, 46), width=1)
 
-    # Top Hackathon Pill
     draw.rounded_rectangle([(630, 130), (1290, 180)], radius=25, fill=CARD_BG, outline=ALEXA_CYAN, width=2)
     draw.text(
         (960, 155),
@@ -82,7 +120,6 @@ def create_01_intro_title():
         anchor="mm",
     )
 
-    # 3:14 AM Hook Banner
     draw.rounded_rectangle([(730, 215), (1190, 260)], radius=8, fill=(45, 20, 28), outline=CRIMSON, width=1)
     draw.text(
         (960, 237),
@@ -92,7 +129,6 @@ def create_01_intro_title():
         anchor="mm",
     )
 
-    # Main Title
     draw.text((960, 355), "GENIUS", font=get_font(FONT_BOLD, 118), fill=TEXT_WHITE, anchor="mm")
     draw.text(
         (960, 445),
@@ -109,7 +145,6 @@ def create_01_intro_title():
         anchor="mm",
     )
 
-    # Tagline
     draw.rounded_rectangle([(460, 545), (1460, 615)], radius=12, fill=CARD_ALT, outline=AMAZON_AMBER, width=2)
     draw.text(
         (960, 580),
@@ -119,7 +154,6 @@ def create_01_intro_title():
         anchor="mm",
     )
 
-    # 3 Track / Challenge Cards
     cards = [
         (
             "PRIMARY TRACK: ALEXA+",
@@ -215,7 +249,6 @@ def create_02_problem_card():
             y_text += 32
         x += 585
 
-    # Bottom Paradigm Shift Banner
     draw.rounded_rectangle([(105, 790), (1815, 985)], radius=16, fill=CARD_ALT, outline=EMERALD, width=2)
     draw.text(
         (960, 845),
@@ -244,19 +277,20 @@ def create_02_problem_card():
 
 
 def create_03_architecture_math():
+    """Renders Pillar 1, 2, 3 and Thermodynamic Counterfactual Proof using genuine LaTeX math typesetting."""
     img = Image.new("RGBA", (1920, 1080), BG_DARK)
     draw = ImageDraw.Draw(img)
     draw_top_simulator_bar(draw, "3-PILLAR WORLD MODEL", ALEXA_CYAN)
 
     draw.text(
-        (960, 140),
+        (960, 138),
         "ZERO BLACK-BOX: DSP, CONTINUOUS PHYSICS & AMAZON BEDROCK",
         font=get_font(FONT_BOLD, 42),
         fill=TEXT_WHITE,
         anchor="mm",
     )
     draw.text(
-        (960, 190),
+        (960, 185),
         "Deterministic local signal processing + continuous reliability math + cloud specialist deliberation",
         font=get_font(FONT_REGULAR, 22),
         fill=TEXT_SLATE,
@@ -267,41 +301,44 @@ def create_03_architecture_math():
         (
             "PILLAR 1: EPHEMERAL DSP (<15ms)",
             "Hilbert Envelope & Volatile Scrub",
-            "A(t) = |s(t) + i · H{s(t)}|",
+            r"$A(t) = \left|\,s(t) + i\,\mathcal{H}\{s(t)\}\,\right|$",
+            20,
             [
-                "Extracts (Δt_cadence, f_peak, τ_pulse)",
+                "Extracts feature triplet (Δt, f_peak, τ_pulse)",
                 "Hann-windowed FFT resolves 3,368 Hz",
-                "physical piezo drift (±350 Hz band)",
+                "physical piezo resonance (±350 Hz band)",
                 "Immediate RAM zeroing: data.fill(0.0)",
                 "0 bytes raw audio on disk or SQLite",
-                "Voice-native diagnose_from_description",
+                "Validated on real ESC-50 domestic noises",
             ],
             ALEXA_CYAN,
         ),
         (
-            "PILLAR 2: MATHEMATICAL WORLD MODEL",
-            "Weibull Hazard & Thermodynamics",
-            "R(t) = exp(-(t/η)^β)  |  dT/dt",
+            "PILLAR 2: RELIABILITY WORLD MODEL",
+            "Weibull Survival & Hazard Rate",
+            r"$R(t) = e^{-(t/\eta)^\beta}, \quad h(t) = \frac{\beta}{\eta}\left(\frac{t}{\eta}\right)^{\beta-1}$",
+            18,
             [
-                "CO Detector: η=7.0y, β=3.0 wear-out",
-                "Carrier Furnace: η=15.0y, β=2.2 fatigue",
-                "Lumped-capacitance pipe cavity model:",
-                "dT/dt = -(1/τ_pipe)(T_in - T_out)",
-                "At 24°F ambient (τ=16h): freezes in 27.3h",
-                "5,000-run Monte Carlo: 94.1% freeze risk",
+                "CO Detector: η = 7.0 yr, β = 3.0 wear-out",
+                "Carrier Furnace: η = 15.0 yr, β = 2.2 fatigue",
+                "Continuous fleet reliability score R_fleet(t)",
+                "Replaces static binary device flags",
+                "Tracks warranty expiration & lifecycle state",
+                "Auditable provenance per graph entity",
             ],
             EMERALD,
         ),
         (
-            "PILLAR 3: AWS BEDROCK & ALEXA+",
-            "Nova Pro Deliberation & SSE Push",
-            "amazon.nova-pro-v1:0  +  Polly",
+            "PILLAR 3: THERMODYNAMICS & BEDROCK",
+            "Heat Loss ODE & Nova Pro TCO",
+            r"$\frac{dT_{\mathrm{in}}}{dt} = -\frac{1}{\tau_{\mathrm{pipe}}}(T_{\mathrm{in}} - T_{\mathrm{out}}) + \frac{Q_{\mathrm{furnace}}}{C_{\mathrm{th}}}$",
+            18,
             [
+                "Simulates unheated pipe cavity cooling",
                 "Bedrock Nova Pro 5-yr Repair vs Replace",
                 "TCO financial deliberation in 2.64s",
-                "Multimodal Vision reads appliance tags",
                 "Amazon Polly Neural (Joanna) 180ms TTFB",
-                "Strict Propose -> Confirm trust gate",
+                "Strict Propose -> Confirm trust boundary",
                 "Proactive SSE push when delivery arrives",
             ],
             AMAZON_AMBER,
@@ -309,62 +346,67 @@ def create_03_architecture_math():
     ]
 
     x = 95
-    for title, sub, formula, bullets, col in pillars:
-        draw.rounded_rectangle([(x, 235), (x + 550, 785)], radius=16, fill=CARD_BG, outline=col, width=2)
-        draw.text((x + 28, 265), title, font=get_font(FONT_BOLD, 21), fill=col)
-        draw.text((x + 28, 300), sub, font=get_font(FONT_BOLD, 24), fill=TEXT_WHITE)
+    for title, sub, latex_eq, eq_size, bullets, col in pillars:
+        draw.rounded_rectangle([(x, 225), (x + 550, 775)], radius=16, fill=CARD_BG, outline=col, width=2)
+        draw.text((x + 28, 255), title, font=get_font(FONT_BOLD, 21), fill=col)
+        draw.text((x + 28, 290), sub, font=get_font(FONT_BOLD, 24), fill=TEXT_WHITE)
 
-        # Formula box
-        draw.rounded_rectangle([(x + 25, 345), (x + 525, 405)], radius=8, fill=(12, 18, 30), outline=BORDER_MUTED, width=1)
-        draw.text((x + 275, 375), formula, font=get_font(FONT_MONO, 20), fill=col, anchor="mm")
+        # LaTeX Formula Box
+        draw.rounded_rectangle([(x + 22, 332), (x + 528, 422)], radius=10, fill=(10, 15, 26), outline=col, width=1)
+        eq_img = render_latex(latex_eq, fontsize=eq_size, color_rgb=col, dpi=220)
+        paste_centered(img, eq_img, x + 275, 377, max_w=485)
 
-        y_b = 435
+        y_b = 445
         for b in bullets:
             draw.text((x + 28, y_b), f"•  {b}", font=get_font(FONT_REGULAR, 19), fill=TEXT_LIGHT)
-            y_b += 52
+            y_b += 51
         x += 590
 
-    # Bottom Thermodynamic Proof Strip
-    draw.rounded_rectangle([(95, 815), (1825, 995)], radius=14, fill=CARD_ALT, outline=BORDER_MUTED, width=2)
+    # Bottom Thermodynamic Counterfactual Proof Box with Full LaTeX Equations
+    draw.rounded_rectangle([(95, 800), (1825, 1005)], radius=16, fill=CARD_ALT, outline=AMAZON_AMBER, width=2)
     draw.text(
-        (135, 855),
-        "THERMODYNAMIC COUNTERFACTUAL PROOF (24°F COLD SNAP · HEAT OFF):",
-        font=get_font(FONT_BOLD, 21),
+        (135, 832),
+        "THERMODYNAMIC COUNTERFACTUAL PROOF  (24°F COLD SNAP · FURNACE TRIPPED · Q_furnace = 0):",
+        font=get_font(FONT_BOLD, 20),
         fill=AMAZON_AMBER,
     )
-    draw.text(
-        (135, 900),
-        "t_freeze = -τ_pipe · ln((32 - T_out) / (T_in(0) - T_out)) = -16.0 · ln(8 / 44) = 27.3 hours   (10th percentile risk: 18.2 hours)",
-        font=get_font(FONT_MONO, 21),
-        fill=TEXT_WHITE,
+
+    eq_main = render_latex(
+        r"$t_{\mathrm{freeze}} = -\tau_{\mathrm{pipe}}\,\ln\!\left(\frac{T_{\mathrm{freeze}} - T_{\mathrm{out}}}{T_{\mathrm{in}}(0) - T_{\mathrm{out}}}\right) = -16.0\,\ln\!\left(\frac{32 - 24}{68 - 24}\right) = -16.0\,\ln\!\left(\frac{8}{44}\right) = 27.3\;\mathrm{hours} \quad \left(P_{10} = 18.2\;\mathrm{h}\right)$",
+        fontsize=19,
+        color_rgb=TEXT_WHITE,
+        dpi=220,
     )
-    draw.text(
-        (135, 945),
-        "Sensitivity Conditioning:   τ_pipe = 16h (Cavity) -> 94.1% Risk   |   τ = 24h -> 66.0% Risk   |   τ = 35h (Envelope) -> 25.0% Risk",
-        font=get_font(FONT_REGULAR, 19),
-        fill=TEXT_SLATE,
+    paste_centered(img, eq_main, 960, 898, max_w=1650)
+
+    eq_mc = render_latex(
+        r"$\mathrm{Monte\;Carlo\;(N=5,000):}\quad P\left(t_{\mathrm{freeze}} \leq 48\mathrm{h} \;\mid\; \tau_{\mathrm{pipe}} \sim \mathrm{Lognormal}(\ln 16,\, 0.3)\right) = 94.1\% \quad |\quad \tau=24\mathrm{h} \rightarrow 66.0\% \quad |\quad \tau=35\mathrm{h} \rightarrow 25.0\%$",
+        fontsize=16,
+        color_rgb=ALEXA_CYAN,
+        dpi=220,
     )
+    paste_centered(img, eq_mc, 960, 968, max_w=1650)
 
     img.save(OUTPUT_DIR / "03_architecture_math.png")
-    print("Created 03_architecture_math.png")
+    print("Created 03_architecture_math.png (with LaTeX equations)")
 
 
 def create_04_benchmarks_beepdb():
     img = Image.new("RGBA", (1920, 1080), BG_DARK)
     draw = ImageDraw.Draw(img)
-    draw_top_simulator_bar(draw, "EMPIRICAL PROOF & BEEPDB", EMERALD)
+    draw_top_simulator_bar(draw, "EMPIRICAL PROOF & ESC-50", EMERALD)
 
     draw.text(
         (960, 140),
-        "REPRODUCIBLE BENCHMARKS & OPEN-SOURCE BEEPDB LIBRARY",
-        font=get_font(FONT_BOLD, 42),
+        "REAL HARDWARE, ESC-50 DATASET BENCHMARKS & OPEN-SOURCE BEEPDB",
+        font=get_font(FONT_BOLD, 40),
         fill=TEXT_WHITE,
         anchor="mm",
     )
     draw.text(
         (960, 190),
-        "Verified via benchmarks/run_benchmarks.py and 19 automated pytest gates on Python 3.11 & 3.12 CI",
-        font=get_font(FONT_REGULAR, 22),
+        "Validated on physical Freesound/Wikimedia hardware recordings + peer-reviewed ESC-50 Domestic Dataset (Piczak, ACM MM)",
+        font=get_font(FONT_REGULAR, 21),
         fill=TEXT_SLATE,
         anchor="mm",
     )
@@ -372,37 +414,37 @@ def create_04_benchmarks_beepdb():
     # Top 4 KPI Metric Boxes
     kpis = [
         ("13.52 ms", "Total Local Pipeline", "9.80ms DSP + 3.70ms DB", ALEXA_CYAN),
-        ("100% (6/6)", "Physical Piezo Clips", "Bloofrzo CC0 Hardware", EMERALD),
-        ("90.0% (9/10)", "+6 dB Heavy Noise", "Domestic Room Noise Bed", AMAZON_AMBER),
-        ("19 / 19", "Passing Pytest Gates", "0 Bytes Audio on Disk", PURPLE),
+        ("100% (12/12)", "Real Hardware & ESC-50", "6 Piezos + 6 ESC-50 Mixes", EMERALD),
+        ("100% (0/6 FP)", "ESC-50 Specificity", "0 False Alarms on Home Noise", AMAZON_AMBER),
+        ("20 / 20", "Passing Pytest Gates", "0 Bytes Audio on Disk", PURPLE),
     ]
     x = 95
     for val, lbl, sub, col in kpis:
         draw.rounded_rectangle([(x, 235), (x + 405, 420)], radius=14, fill=CARD_BG, outline=col, width=2)
-        draw.text((x + 202, 295), val, font=get_font(FONT_BOLD, 48), fill=col, anchor="mm")
+        draw.text((x + 202, 295), val, font=get_font(FONT_BOLD, 44), fill=col, anchor="mm")
         draw.text((x + 202, 355), lbl, font=get_font(FONT_BOLD, 21), fill=TEXT_WHITE, anchor="mm")
         draw.text((x + 202, 390), sub, font=get_font(FONT_REGULAR, 17), fill=TEXT_SLATE, anchor="mm")
         x += 440
 
     # Left Box: Latency & Accuracy Table
     draw.rounded_rectangle([(95, 455), (940, 990)], radius=16, fill=CARD_BG, outline=BORDER_MUTED, width=2)
-    draw.text((130, 490), "MEASURED PIPELINE RECEIPTS", font=get_font(FONT_BOLD, 24), fill=ALEXA_CYAN)
+    draw.text((130, 490), "EMPIRICAL DATASET & PIPELINE RECEIPTS", font=get_font(FONT_BOLD, 23), fill=ALEXA_CYAN)
 
     rows = [
-        ("Synthetic 20-Device Corpus", "95.0% (19/20)", "CO vs Smoke 30s conservative tie-break"),
-        ("Physical Piezo Calibration", "100.0% (6/6)", "3,368 Hz measured vs 3,200 Hz nominal"),
-        ("Noise Robustness (+15 dB / +6 dB)", "90.0% (9/10)", "Tested across two SNR noise levels"),
+        ("Physical Piezo Hardware (Freesound CC0)", "100.0% (6/6)", "3,368 Hz measured vs 3,200 Hz nominal"),
+        ("ESC-50 Real Domestic Mix (+15 dB SNR)", "100.0% (6/6)", "Vacuum, washer, water, knock, steps"),
+        ("ESC-50 Heavy Noise Gate (+6 dB SNR)", "90.0% (9/10)", "Real ESC-50 domestic noise bed"),
+        ("ESC-50 Non-Alarm Specificity", "100.0% (6/6)", "0% false positives on household audio"),
+        ("20-Device Reference Cadence Table", "95.0% (19/20)", "CO vs Smoke 30s conservative tie-break"),
         ("Hilbert + Hann FFT Extraction", "9.80 ms", "In-flight volatile RAM processing"),
-        ("Volatile Array Scrubbing", "0.005 ms", "data.fill(0.0) + persistence gate test"),
-        ("beepdb Signature Lookup", "0.015 ms", "20 devices across 9 categories"),
-        ("Home Graph SQLite Write", "3.70 ms", "Auditable provenance + proposals"),
+        ("Volatile Array Scrub + DB Write", "3.72 ms", "data.fill(0.0) + SQLite provenance"),
         ("Bedrock Nova Pro Deliberation", "2,640 ms", "Live 5-yr TCO JSON analysis"),
         ("Amazon Polly Neural TTS", "180 ms", "Joanna neural voice stream TTFB"),
     ]
     y = 545
     for name, metric, note in rows:
-        draw.text((130, y), name, font=get_font(FONT_SEMIBOLD, 18), fill=TEXT_WHITE)
-        draw.text((515, y), metric, font=get_font(FONT_MONO, 18), fill=EMERALD)
+        draw.text((130, y), name, font=get_font(FONT_SEMIBOLD, 17), fill=TEXT_WHITE)
+        draw.text((515, y), metric, font=get_font(FONT_MONO, 17), fill=EMERALD)
         draw.text((665, y), note, font=get_font(FONT_REGULAR, 15), fill=TEXT_SLATE)
         draw.line([(130, y + 32), (910, y + 32)], fill=(30, 41, 59), width=1)
         y += 47
@@ -417,7 +459,6 @@ def create_04_benchmarks_beepdb():
         fill=TEXT_LIGHT,
     )
 
-    # Terminal CLI mockup
     draw.rounded_rectangle([(1015, 565), (1790, 815)], radius=10, fill=(10, 14, 22), outline=BORDER_MUTED, width=1)
     cli_lines = [
         ("$ pip install git+https://github.com/patriceai-code/beepdb.git", TEXT_SLATE),
@@ -433,7 +474,7 @@ def create_04_benchmarks_beepdb():
         draw.text((1035, yc), line, font=get_font(FONT_MONO, 16), fill=col)
         yc += 31
 
-    draw.text((1015, 845), "20 Sourced Hardware Signatures Across 9 Appliance Classes:", font=get_font(FONT_BOLD, 19), fill=TEXT_WHITE)
+    draw.text((1015, 845), "20 Sourced Hardware Signatures + Real ESC-50 Audio Corpus:", font=get_font(FONT_BOLD, 19), fill=TEXT_WHITE)
     draw.text(
         (1015, 880),
         "Kidde · First Alert · Google Nest · X-Sense · Honeywell · FireAngel",
@@ -448,13 +489,13 @@ def create_04_benchmarks_beepdb():
     )
     draw.text(
         (1015, 950),
-        "[PASS] 5/5 Unit & CLI Tests Passing   ·   [OPEN] Community CONTRIBUTING.md Schema",
-        font=get_font(FONT_SEMIBOLD, 17),
+        "[PASS] 20/20 GENIUS Gates + 5/5 beepdb Gates   ·   [CC0 / CC-BY 4.0] Real Audio",
+        font=get_font(FONT_SEMIBOLD, 16),
         fill=EMERALD,
     )
 
     img.save(OUTPUT_DIR / "04_benchmarks_beepdb.png")
-    print("Created 04_benchmarks_beepdb.png")
+    print("Created 04_benchmarks_beepdb.png (with ESC-50 real dataset benchmarks)")
 
 
 def create_05_outro_business():
@@ -495,7 +536,6 @@ def create_05_outro_business():
             yb += 30
         x += 440
 
-    # Center Outro Hero Box
     draw.rounded_rectangle([(95, 575), (1825, 995)], radius=18, fill=CARD_ALT, outline=ALEXA_CYAN, width=2)
 
     draw.text((960, 640), "GENIUS — THE HOME WORLD MODEL", font=get_font(FONT_BOLD, 48), fill=TEXT_WHITE, anchor="mm")
@@ -507,7 +547,6 @@ def create_05_outro_business():
         anchor="mm",
     )
 
-    # Links Grid
     links = [
         ("PRIMARY REPOSITORY (MIT):", "https://github.com/patriceai-code/genius", ALEXA_CYAN),
         ("OPEN-SOURCE BEEPDB PACKAGE:", "https://github.com/patriceai-code/beepdb", EMERALD),

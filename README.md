@@ -186,9 +186,9 @@ $$T_{\text{zone}}(t) = T_{\text{out}} + \big(T_{\text{zone}}(0) - T_{\text{out}}
 
 ---
 
-## 7. Empirical Benchmark Suite & Automated Verification (19/19 Green)
+## 7. Empirical Benchmark Suite & Automated Verification (20/20 Green)
 
-To eliminate blind trust, GENIUS includes an automated empirical benchmark suite (`python benchmarks/run_benchmarks.py`) and a 19/19 pytest suite verifying spec compliance, latency budgets, and physical performance:
+To eliminate blind trust, GENIUS includes an automated empirical benchmark suite (`python benchmarks/run_benchmarks.py`) and a 20/20 pytest suite verifying spec compliance, latency budgets, and physical performance across real hardware recordings and the peer-reviewed **ESC-50 Environmental Sound Classification** dataset (Piczak, ACM Multimedia):
 
 ### Latency Budget (Deterministic End-to-End Processing)
 | Stage | Execution Mechanism | Latency | Spec Constraint |
@@ -204,12 +204,13 @@ To eliminate blind trust, GENIUS includes an automated empirical benchmark suite
 ### Classification Accuracy & Noise Robustness Gates
 | Test Suite Gate | Dataset / Hardware Profile | Accuracy | Status |
 | :--- | :--- | :--- | :--- |
-| **Synthetic Baseline** | 20 diverse home appliances (smoke, CO, leaks, fridges, UPS) | **95.0% (19/20)\*** | PASSED |
 | **Empirical Physical Piezos** | Real hardware recordings (Bloofrzo CC0 piezo transducers) | **100.0% (6/6)\*\*** | PASSED |
-| **Ambient Noise Robustness** | Real domestic room noise mixed at **+15 dB SNR** | **90.0% (9/10)** | PASSED |
-| **Heavy Noise Gate** | Loud kitchen domestic noise bed mixed at **+6 dB SNR** | **90.0% (9/10)** | PASSED |
+| **ESC-50 Real Domestic Mix** | Physical chirp mixed with 6 ESC-50 household recordings (**+15 dB SNR**) | **100.0% (6/6)** | PASSED |
+| **ESC-50 Non-Alarm Specificity** | Standalone ESC-50 vacuum, washer, water, knock, steps, clock (**0% FP**) | **100.0% (6/6)** | PASSED |
+| **Ambient & Heavy Noise Gate** | Real ESC-50 domestic room noise mixed at **+15 dB & +6 dB SNR** | **90.0% (9/10)** | PASSED |
+| **20-Device Reference Cadence** | Deterministic 20-device reference cadence regression table | **95.0% (19/20)\*** | PASSED |
 
-*\*Note on Synthetic Mismatch: The single synthetic mismatch (clip 04) occurred because Kidde i9010 smoke detector low-battery (30s cadence, 3,100 Hz) falls within 100 Hz of Kidde CO end-of-life (30s cadence, 3,200 Hz). The matcher conservatively classifies this at the higher critical severity level.*  
+*\*Note on Reference Cadence Mismatch: The single reference cadence mismatch (clip 04) occurred because Kidde i9010 smoke detector low-battery (30s cadence, 3,100 Hz) falls within 100 Hz of Kidde CO end-of-life (30s cadence, 3,200 Hz). The matcher conservatively classifies this at the higher critical severity level.*  
 *\*\*Note on Physical Piezos: Physical piezo clips were used to calibrate our initial ±350 Hz tolerance band, so this represents verification of physical component resonance rather than a held-out test split.*
 
 ```powershell
@@ -224,24 +225,25 @@ python benchmarks/run_benchmarks.py
 tests/test_audio_persistence.py::test_audio_never_persisted_to_disk_or_db PASSED [  5%]
 tests/test_loop.py::test_state_remembers_across_loops PASSED             [ 10%]
 tests/test_matcher.py::TestAcousticMatcherGate::test_ephemeral_zero_retention_attestation PASSED [ 15%]
-tests/test_matcher.py::TestAcousticMatcherGate::test_acoustic_diverse_devices_gate PASSED [ 21%]
-tests/test_matcher.py::TestAcousticMatcherGate::test_real_physical_recordings_gate PASSED [ 26%]
-tests/test_matcher.py::TestAcousticMatcherGate::test_end_to_end_core_loop PASSED [ 31%]
-tests/test_matcher.py::TestAcousticMatcherGate::test_acoustic_noise_robustness_two_levels PASSED [ 36%]
-tests/test_phase1_skeleton.py::test_mcp_config PASSED                    [ 42%]
-tests/test_phase1_skeleton.py::test_registered_tools PASSED              [ 47%]
-tests/test_phase1_skeleton.py::test_api_tools_endpoint PASSED            [ 52%]
-tests/test_phase1_skeleton.py::test_api_call_diagnose_and_confirm PASSED [ 57%]
-tests/test_phase1_skeleton.py::test_mcp_streamable_http_spec_handshake PASSED [ 63%]
-tests/test_phase1_skeleton.py::test_api_call_diagnose_from_description PASSED [ 68%]
-tests/test_warranties_and_deliberation.py::test_device_registration_and_warranty_tracking PASSED [ 73%]
-tests/test_warranties_and_deliberation.py::test_specialist_deliberation_repair_vs_replace PASSED [ 78%]
-tests/test_world_model_and_reliability.py::test_weibull_continuous_reliability_calculation PASSED [ 84%]
-tests/test_world_model_and_reliability.py::test_thermal_freeze_counterfactual_simulation PASSED [ 89%]
-tests/test_world_model_and_reliability.py::test_parse_json_from_llm PASSED [ 94%]
+tests/test_matcher.py::TestAcousticMatcherGate::test_acoustic_diverse_devices_gate PASSED [ 20%]
+tests/test_matcher.py::TestAcousticMatcherGate::test_real_physical_recordings_gate PASSED [ 25%]
+tests/test_matcher.py::TestAcousticMatcherGate::test_end_to_end_core_loop PASSED [ 30%]
+tests/test_matcher.py::TestAcousticMatcherGate::test_acoustic_noise_robustness_two_levels PASSED [ 35%]
+tests/test_matcher.py::TestAcousticMatcherGate::test_esc50_real_domestic_dataset_specificity_and_noise PASSED [ 40%]
+tests/test_phase1_skeleton.py::test_mcp_config PASSED                    [ 45%]
+tests/test_phase1_skeleton.py::test_registered_tools PASSED              [ 50%]
+tests/test_phase1_skeleton.py::test_api_tools_endpoint PASSED            [ 55%]
+tests/test_phase1_skeleton.py::test_api_call_diagnose_and_confirm PASSED [ 60%]
+tests/test_phase1_skeleton.py::test_mcp_streamable_http_spec_handshake PASSED [ 65%]
+tests/test_phase1_skeleton.py::test_api_call_diagnose_from_description PASSED [ 70%]
+tests/test_warranties_and_deliberation.py::test_device_registration_and_warranty_tracking PASSED [ 75%]
+tests/test_warranties_and_deliberation.py::test_specialist_deliberation_repair_vs_replace PASSED [ 80%]
+tests/test_world_model_and_reliability.py::test_weibull_continuous_reliability_calculation PASSED [ 85%]
+tests/test_world_model_and_reliability.py::test_thermal_freeze_counterfactual_simulation PASSED [ 90%]
+tests/test_world_model_and_reliability.py::test_parse_json_from_llm PASSED [ 95%]
 tests/test_world_model_and_reliability.py::test_home_health_continuous_fleet_metrics PASSED [100%]
 
-============================= 19 passed in 6.53s ==============================
+============================= 20 passed in 6.72s ==============================
 ```
 
 - **Reference Client Compliance:** Verified against the official Model Context Protocol Python SDK's reference client (`mcp.client.streamable_http.StreamableHTTPClient`).

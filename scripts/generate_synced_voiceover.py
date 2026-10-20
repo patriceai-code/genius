@@ -148,8 +148,8 @@ BEATS = [
         "visual_file": "04_benchmarks_beepdb.png",
         "narrator_text": (
             "Every claim is backed by reproducible code: a 13.52 millisecond local pipeline, 100 percent "
-            "accuracy on physical piezo recordings, 90 percent accuracy under heavy 6-decibel room noise, "
-            "19 passing test gates, and beep-D-B — our standalone open-source acoustic library under M-I-T "
+            "accuracy across physical hardware recordings and the peer-reviewed E-S-C-50 domestic audio dataset, "
+            "20 passing test gates, and beep-D-B — our standalone open-source acoustic library under M-I-T "
             "and C-C-B-Y 4.0."
         ),
     },

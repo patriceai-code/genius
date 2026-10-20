@@ -318,3 +318,60 @@ class TestAcousticMatcherGate:
         assert m_synth_6.meaning == "low_battery"
         assert m_synth_6.confidence >= 0.90
 
+    def test_esc50_real_domestic_dataset_specificity_and_noise(self):
+        """
+        Real Online Benchmark Dataset Gate (ESC-50 Environmental Sound Classification, Piczak ACM MM):
+        1. Specificity / False-Positive Gate: Verifies that 6 real domestic household recordings from ESC-50
+           (washing machine, vacuum cleaner, pouring water, wood door knock, footsteps, clock tick)
+           do NOT false-trigger a high-confidence alarm diagnosis (6/6 rejected, confidence < 0.50).
+        2. Multi-Environment Real Noise Gate: Mixes the real physical Kidde piezo recording (#819808)
+           with all 6 real ESC-50 domestic recordings at +15 dB SNR and verifies 6/6 (100%) recovery
+           of the 3,368 Hz piezo peak and Kidde low-battery match.
+        """
+        import soundfile as sf
+        from audio.features import extract_features_from_pcm, calculate_peak_frequency, calculate_pulse_duration
+
+        esc50_domestic_files = [
+            "esc50_washing_machine_21896.wav",
+            "esc50_vacuum_cleaner_100210.wav",
+            "esc50_pouring_water_118559.wav",
+            "esc50_door_knock_101336.wav",
+            "esc50_footsteps_155858.wav",
+            "esc50_clock_tick_21934.wav",
+        ]
+
+        real_clip_path = os.path.join(CLIPS_DIR, "real_smoke_detector_chirp_819808.wav")
+        real_sig, r_sr = sf.read(real_clip_path, dtype="float32")
+        if real_sig.ndim > 1:
+            real_sig = real_sig.mean(axis=1)
+
+        for fname in esc50_domestic_files:
+            fpath = os.path.join(CLIPS_DIR, fname)
+            assert os.path.exists(fpath), f"Missing ESC-50 clip: {fname}"
+            dom_samples, dom_sr = sf.read(fpath, dtype="float32")
+
+            # 1. Specificity check: standalone domestic noise must not false-trigger (confidence < 0.50)
+            feats = extract_features_from_pcm(dom_samples, dom_sr)
+            m_false = match_acoustic_features(
+                feats["interval_s"], feats["peak_frequency_hz"], feats["pulse_duration_ms"]
+            )
+            assert m_false is None or m_false.confidence < 0.50, (
+                f"False positive on ESC-50 {fname}: got {m_false.brand} ({m_false.confidence})"
+            )
+
+            # 2. Signal-in-real-noise check (+15 dB SNR)
+            noise_seg = dom_samples[: len(real_sig)]
+            sig_p = np.mean(real_sig ** 2)
+            noise_p = np.mean(noise_seg ** 2)
+            scale = np.sqrt((sig_p / (10 ** (15.0 / 10.0))) / noise_p)
+            mixed = real_sig + scale * noise_seg
+
+            f_mix = calculate_peak_frequency(mixed, r_sr)
+            d_mix = calculate_pulse_duration(mixed, r_sr)
+            m_mix = match_acoustic_features(30.0, f_mix, d_mix)
+            assert m_mix is not None
+            assert m_mix.brand == "Kidde"
+            assert m_mix.device_class == "smoke_detector"
+            assert m_mix.confidence >= 0.95
+
+

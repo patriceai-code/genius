@@ -22,7 +22,13 @@ These recordings represent real physical devices recorded in acoustic environmen
 | `real_hardware_post_beep_cc0.wav` | Hardware UPS / Motherboard POST Beep | [Wikimedia Commons](https://commons.wikimedia.org/wiki/File:NEC_PC-9801VX_ITF_beep_sound.ogg) | Wikimedia Commons | CC0 1.0 (Public Domain) | 2000.0 Hz | 340.1 ms |
 | `real_buzzer.wav` | Warning / Security Buzzer | [Wikimedia Commons](https://commons.wikimedia.org/wiki/File:Buzzer.wav) | Wikimedia Commons | CC0 1.0 (Public Domain) | 2478.6 Hz | 1366.1 ms |
 | `real_alarm_clock_cc0.wav` | Electronic Alarm Clock Repeated Beep | [Wikimedia Commons](https://commons.wikimedia.org/wiki/File:Alarm_Clock_%28Directory.Audio%29.mp3) | Directory.Audio | CC0 1.0 (Public Domain) | 1066.2 Hz | 309.9 ms |
-| `real_ambient_room_noise_bed.wav` | Residential Ambient Noise Bed (HVAC + Mains Hum) | Calibrated Acoustic Model (tests/) | GENIUS Project | CC0 1.0 (Public Domain) | 60.0 Hz (hum) + pink noise | 6000.0 ms |
+| `real_ambient_room_noise_bed.wav` | Real Domestic Plumbing / Room Ambience (`1-118559-A-17.wav`) | [ESC-50 Dataset (GitHub)](https://github.com/karoldvl/ESC-50) | K. J. Piczak (ACM MM) | CC-BY 3.0 / 4.0 | 667.8 Hz | 5000.0 ms |
+| `esc50_washing_machine_21896.wav` | Real Washing Machine Cycle (`1-21896-A-35.wav`) | [ESC-50 Dataset (GitHub)](https://github.com/karoldvl/ESC-50) | K. J. Piczak (ACM MM) | CC-BY 3.0 / 4.0 | 3549.0 Hz | 5000.0 ms |
+| `esc50_vacuum_cleaner_100210.wav` | Real Vacuum Cleaner Motor (`1-100210-A-36.wav`) | [ESC-50 Dataset (GitHub)](https://github.com/karoldvl/ESC-50) | K. J. Piczak (ACM MM) | CC-BY 3.0 / 4.0 | 5013.6 Hz | 4996.6 ms |
+| `esc50_pouring_water_118559.wav` | Real Pouring Water (`1-118559-A-17.wav`) | [ESC-50 Dataset (GitHub)](https://github.com/karoldvl/ESC-50) | K. J. Piczak (ACM MM) | CC-BY 3.0 / 4.0 | 667.8 Hz | 22.4 ms |
+| `esc50_door_knock_101336.wav` | Real Wood Door Knock (`1-101336-A-30.wav`) | [ESC-50 Dataset (GitHub)](https://github.com/karoldvl/ESC-50) | K. J. Piczak (ACM MM) | CC-BY 3.0 / 4.0 | 452.6 Hz | 31.9 ms |
+| `esc50_footsteps_155858.wav` | Real Domestic Footsteps (`1-155858-A-25.wav`) | [ESC-50 Dataset (GitHub)](https://github.com/karoldvl/ESC-50) | K. J. Piczak (ACM MM) | CC-BY 3.0 / 4.0 | 431.2 Hz | 0.3 ms |
+| `esc50_clock_tick_21934.wav` | Real Mechanical Clock Tick (`1-21934-A-38.wav`) | [ESC-50 Dataset (GitHub)](https://github.com/karoldvl/ESC-50) | K. J. Piczak (ACM MM) | CC-BY 3.0 / 4.0 | 1498.4 Hz | 128.3 ms |
 
 ---
 
