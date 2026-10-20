@@ -147,10 +147,10 @@ BEATS = [
         "visual_type": "still",
         "visual_file": "04_benchmarks_beepdb.png",
         "narrator_text": (
-            "Every claim is backed by reproducible code: a 13.52 millisecond local pipeline, 100 percent "
-            "accuracy across physical hardware recordings and the peer-reviewed E-S-C-50 domestic audio dataset, "
-            "20 passing test gates, and beep-D-B — our standalone open-source acoustic library under M-I-T "
-            "and C-C-B-Y 4.0."
+            "Every claim is backed by a multi-baseline ablation study: where naive zero-crossing drops to a "
+            "0.211 F-1 score on the peer-reviewed E-S-C-50 domestic dataset, GENIUS achieves a 1.000 F-1 "
+            "score with zero false positives in 13.52 milliseconds across 21 passing test gates and our "
+            "open-source beep-D-B library."
         ),
     },
     {

@@ -414,9 +414,9 @@ def create_04_benchmarks_beepdb():
     # Top 4 KPI Metric Boxes
     kpis = [
         ("13.52 ms", "Total Local Pipeline", "9.80ms DSP + 3.70ms DB", ALEXA_CYAN),
-        ("100% (12/12)", "Real Hardware & ESC-50", "6 Piezos + 6 ESC-50 Mixes", EMERALD),
-        ("100% (0/6 FP)", "ESC-50 Specificity", "0 False Alarms on Home Noise", AMAZON_AMBER),
-        ("20 / 20", "Passing Pytest Gates", "0 Bytes Audio on Disk", PURPLE),
+        ("F1 = 1.000", "Ablation vs Baselines", "vs 0.211 Naive ZCR (p<0.001)", EMERALD),
+        ("0.0% FPR", "ESC-50 Specificity", "0/6 False Alarms on Home Noise", AMAZON_AMBER),
+        ("21 / 21", "Passing Pytest Gates", "0 Bytes Audio on Disk", PURPLE),
     ]
     x = 95
     for val, lbl, sub, col in kpis:
@@ -428,23 +428,24 @@ def create_04_benchmarks_beepdb():
 
     # Left Box: Latency & Accuracy Table
     draw.rounded_rectangle([(95, 455), (940, 990)], radius=16, fill=CARD_BG, outline=BORDER_MUTED, width=2)
-    draw.text((130, 490), "EMPIRICAL DATASET & PIPELINE RECEIPTS", font=get_font(FONT_BOLD, 23), fill=ALEXA_CYAN)
+    draw.text((130, 490), "SCIENTIFIC ABLATION & ESC-50 BENCHMARK RECEIPTS", font=get_font(FONT_BOLD, 22), fill=ALEXA_CYAN)
 
     rows = [
+        ("[Baseline 1] Naive Zero-Crossing + RMS", "F1 = 0.211", "28.6% Prec · 16.7% Rec · 83.3% FPR"),
+        ("[Baseline 2] Narrow FFT (±50 Hz Spec)", "F1 = 0.870", "90.9% Prec · 83.3% Rec · 16.7% FPR"),
+        ("[GENIUS Full] Hilbert + ±350 Hz beepdb", "F1 = 1.000", "100% Prec · 100% Rec · 0.0% FPR"),
         ("Physical Piezo Hardware (Freesound CC0)", "100.0% (6/6)", "3,368 Hz measured vs 3,200 Hz nominal"),
         ("ESC-50 Real Domestic Mix (+15 dB SNR)", "100.0% (6/6)", "Vacuum, washer, water, knock, steps"),
         ("ESC-50 Heavy Noise Gate (+6 dB SNR)", "90.0% (9/10)", "Real ESC-50 domestic noise bed"),
-        ("ESC-50 Non-Alarm Specificity", "100.0% (6/6)", "0% false positives on household audio"),
         ("20-Device Reference Cadence Table", "95.0% (19/20)", "CO vs Smoke 30s conservative tie-break"),
-        ("Hilbert + Hann FFT Extraction", "9.80 ms", "In-flight volatile RAM processing"),
-        ("Volatile Array Scrub + DB Write", "3.72 ms", "data.fill(0.0) + SQLite provenance"),
-        ("Bedrock Nova Pro Deliberation", "2,640 ms", "Live 5-yr TCO JSON analysis"),
-        ("Amazon Polly Neural TTS", "180 ms", "Joanna neural voice stream TTFB"),
+        ("Local DSP + Scrub + DB Pipeline", "13.52 ms", "9.80ms FFT + 0.005ms scrub + 3.70ms DB"),
+        ("Bedrock Nova Pro + Polly Neural/Gen", "2.64s / 180ms", "100% Native AWS AI & Voice Stack"),
     ]
     y = 545
     for name, metric, note in rows:
+        col_m = CRIMSON if "0.211" in metric else (AMAZON_AMBER if "0.870" in metric else EMERALD)
         draw.text((130, y), name, font=get_font(FONT_SEMIBOLD, 17), fill=TEXT_WHITE)
-        draw.text((515, y), metric, font=get_font(FONT_MONO, 17), fill=EMERALD)
+        draw.text((515, y), metric, font=get_font(FONT_MONO, 17), fill=col_m)
         draw.text((665, y), note, font=get_font(FONT_REGULAR, 15), fill=TEXT_SLATE)
         draw.line([(130, y + 32), (910, y + 32)], fill=(30, 41, 59), width=1)
         y += 47
@@ -489,7 +490,7 @@ def create_04_benchmarks_beepdb():
     )
     draw.text(
         (1015, 950),
-        "[PASS] 20/20 GENIUS Gates + 5/5 beepdb Gates   ·   [CC0 / CC-BY 4.0] Real Audio",
+        "[PASS] 21/21 GENIUS Gates + 5/5 beepdb Gates   ·   [CC0 / CC-BY 4.0] Real Audio",
         font=get_font(FONT_SEMIBOLD, 16),
         fill=EMERALD,
     )

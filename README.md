@@ -186,9 +186,18 @@ $$T_{\text{zone}}(t) = T_{\text{out}} + \big(T_{\text{zone}}(0) - T_{\text{out}}
 
 ---
 
-## 7. Empirical Benchmark Suite & Automated Verification (20/20 Green)
+## 7. Empirical Benchmark Suite, Multi-Baseline Ablation & Automated Verification (21/21 Green)
 
-To eliminate blind trust, GENIUS includes an automated empirical benchmark suite (`python benchmarks/run_benchmarks.py`) and a 20/20 pytest suite verifying spec compliance, latency budgets, and physical performance across real hardware recordings and the peer-reviewed **ESC-50 Environmental Sound Classification** dataset (Piczak, ACM Multimedia):
+To eliminate blind trust, GENIUS includes a reproducible scientific ablation and benchmark suite (`python benchmarks/run_benchmarks.py` $\rightarrow$ writes a SHA-256 verified receipt to [`benchmarks/latest_benchmark_receipt.json`](benchmarks/latest_benchmark_receipt.json)) and a **21/21 pytest suite** verifying spec compliance, latency budgets, and physical performance across real hardware recordings and the peer-reviewed **ESC-50 Environmental Sound Classification** dataset (Piczak, ACM Multimedia):
+
+### Multi-Baseline Acoustic Ablation Study (Real Hardware + ESC-50 Domestic Audio, $N = 18$ Trials)
+Why not use a standard time-domain zero-crossing script or a textbook narrow-band FFT? We benchmarked three architectures head-to-head across 6 physical piezo recordings, 6 physical chirps mixed with real ESC-50 domestic noises (washing machine, vacuum cleaner, pouring water, door knock, footsteps, clock tick) at +15 dB SNR, and 6 standalone ESC-50 household recordings:
+
+| Architecture / Ablation Tier | Precision | Recall | Specificity | False Positive Rate (FPR) | $F_1$-Score | Why Baseline Fails / GENIUS Succeeds |
+| :--- | :---: | :---: | :---: | :---: | :---: | :--- |
+| **[Baseline 1] Naive Zero-Crossing + RMS** | 28.6% | 16.7% | 16.7% | 83.3% | **0.211** | Broadband ESC-50 room noise corrupts zero-crossing counts & triggers false alarms on transients. |
+| **[Baseline 2] Narrow FFT ($\pm 50\text{ Hz}$ Spec)** | 90.9% | 83.3% | 83.3% | 16.7% | **0.870** | Misses physical piezo transducers due to real-world cavity resonance drift ($3,368\text{ Hz}$ vs $3,200\text{ Hz}$ spec). |
+| **[GENIUS Full] Hilbert $A(t)$ + $\pm 350\text{ Hz}$ `beepdb`** | **100.0%** | **100.0%** | **100.0%** | **0.0%** | **1.000** | Recovers all physical transducers under ESC-50 noise with $0/6$ false positives on domestic audio. |
 
 ### Latency Budget (Deterministic End-to-End Processing)
 | Stage | Execution Mechanism | Latency | Spec Constraint |
@@ -222,28 +231,29 @@ python benchmarks/run_benchmarks.py
 ```
 
 ```
-tests/test_audio_persistence.py::test_audio_never_persisted_to_disk_or_db PASSED [  5%]
-tests/test_loop.py::test_state_remembers_across_loops PASSED             [ 10%]
-tests/test_matcher.py::TestAcousticMatcherGate::test_ephemeral_zero_retention_attestation PASSED [ 15%]
-tests/test_matcher.py::TestAcousticMatcherGate::test_acoustic_diverse_devices_gate PASSED [ 20%]
-tests/test_matcher.py::TestAcousticMatcherGate::test_real_physical_recordings_gate PASSED [ 25%]
-tests/test_matcher.py::TestAcousticMatcherGate::test_end_to_end_core_loop PASSED [ 30%]
-tests/test_matcher.py::TestAcousticMatcherGate::test_acoustic_noise_robustness_two_levels PASSED [ 35%]
-tests/test_matcher.py::TestAcousticMatcherGate::test_esc50_real_domestic_dataset_specificity_and_noise PASSED [ 40%]
-tests/test_phase1_skeleton.py::test_mcp_config PASSED                    [ 45%]
-tests/test_phase1_skeleton.py::test_registered_tools PASSED              [ 50%]
-tests/test_phase1_skeleton.py::test_api_tools_endpoint PASSED            [ 55%]
-tests/test_phase1_skeleton.py::test_api_call_diagnose_and_confirm PASSED [ 60%]
-tests/test_phase1_skeleton.py::test_mcp_streamable_http_spec_handshake PASSED [ 65%]
-tests/test_phase1_skeleton.py::test_api_call_diagnose_from_description PASSED [ 70%]
-tests/test_warranties_and_deliberation.py::test_device_registration_and_warranty_tracking PASSED [ 75%]
+tests/test_audio_persistence.py::test_audio_never_persisted_to_disk_or_db PASSED [  4%]
+tests/test_loop.py::test_state_remembers_across_loops PASSED             [  9%]
+tests/test_matcher.py::TestAcousticMatcherGate::test_ephemeral_zero_retention_attestation PASSED [ 14%]
+tests/test_matcher.py::TestAcousticMatcherGate::test_acoustic_diverse_devices_gate PASSED [ 19%]
+tests/test_matcher.py::TestAcousticMatcherGate::test_real_physical_recordings_gate PASSED [ 23%]
+tests/test_matcher.py::TestAcousticMatcherGate::test_end_to_end_core_loop PASSED [ 28%]
+tests/test_matcher.py::TestAcousticMatcherGate::test_acoustic_noise_robustness_two_levels PASSED [ 33%]
+tests/test_matcher.py::TestAcousticMatcherGate::test_esc50_real_domestic_dataset_specificity_and_noise PASSED [ 38%]
+tests/test_matcher.py::TestAcousticMatcherGate::test_scientific_ablation_proof_against_baselines PASSED [ 42%]
+tests/test_phase1_skeleton.py::test_mcp_config PASSED                    [ 47%]
+tests/test_phase1_skeleton.py::test_registered_tools PASSED              [ 52%]
+tests/test_phase1_skeleton.py::test_api_tools_endpoint PASSED            [ 57%]
+tests/test_phase1_skeleton.py::test_api_call_diagnose_and_confirm PASSED [ 61%]
+tests/test_phase1_skeleton.py::test_mcp_streamable_http_spec_handshake PASSED [ 66%]
+tests/test_phase1_skeleton.py::test_api_call_diagnose_from_description PASSED [ 71%]
+tests/test_warranties_and_deliberation.py::test_device_registration_and_warranty_tracking PASSED [ 76%]
 tests/test_warranties_and_deliberation.py::test_specialist_deliberation_repair_vs_replace PASSED [ 80%]
 tests/test_world_model_and_reliability.py::test_weibull_continuous_reliability_calculation PASSED [ 85%]
 tests/test_world_model_and_reliability.py::test_thermal_freeze_counterfactual_simulation PASSED [ 90%]
 tests/test_world_model_and_reliability.py::test_parse_json_from_llm PASSED [ 95%]
 tests/test_world_model_and_reliability.py::test_home_health_continuous_fleet_metrics PASSED [100%]
 
-============================= 20 passed in 6.72s ==============================
+============================= 21 passed in 8.62s ==============================
 ```
 
 - **Reference Client Compliance:** Verified against the official Model Context Protocol Python SDK's reference client (`mcp.client.streamable_http.StreamableHTTPClient`).

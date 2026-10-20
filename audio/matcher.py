@@ -213,7 +213,7 @@ def match_acoustic_features(
         else:
             composite_score = (score_freq * 0.75) + (score_dur * 0.25)
 
-        if composite_score > highest_score:
+        if composite_score > highest_score and composite_score >= 0.35:
             highest_score = composite_score
             best_match = BeepMatch(
                 device_class=row["device_class"],

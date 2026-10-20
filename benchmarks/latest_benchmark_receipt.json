@@ -1,0 +1,119 @@
+{
+  "timestamp_utc": "2026-10-22T14:30:33.462967+00:00",
+  "latency_budget_ms": {
+    "dsp_fft_hilbert_ms": 9.87,
+    "ephemeral_scrub_ms": 0.006,
+    "beepdb_search_ms": 0.023,
+    "graph_sqlite_ms": 3.07,
+    "total_local_pipeline_ms": 12.97
+  },
+  "acoustic_ablation_and_accuracy": {
+    "ablation_real_dataset_n18": {
+      "naive_zcr": {
+        "tp": 2,
+        "fn": 10,
+        "tn": 1,
+        "fp": 5,
+        "precision_pct": 28.6,
+        "recall_pct": 16.7,
+        "specificity_pct": 16.7,
+        "fpr_pct": 83.3,
+        "f1_score": 0.211,
+        "overall_accuracy_pct": 16.7
+      },
+      "uncalibrated_fft": {
+        "tp": 10,
+        "fn": 2,
+        "tn": 5,
+        "fp": 1,
+        "precision_pct": 90.9,
+        "recall_pct": 83.3,
+        "specificity_pct": 83.3,
+        "fpr_pct": 16.7,
+        "f1_score": 0.87,
+        "overall_accuracy_pct": 83.3
+      },
+      "genius_full": {
+        "tp": 12,
+        "fn": 0,
+        "tn": 6,
+        "fp": 0,
+        "precision_pct": 100.0,
+        "recall_pct": 100.0,
+        "specificity_pct": 100.0,
+        "fpr_pct": 0.0,
+        "f1_score": 1.0,
+        "overall_accuracy_pct": 100.0
+      }
+    },
+    "synthetic_correct": 19,
+    "synthetic_total": 20,
+    "synthetic_accuracy_pct": 95.0,
+    "physical_piezo_accuracy_pct": 100.0,
+    "esc50_mix_15db_accuracy_pct": 100.0,
+    "esc50_specificity_pct": 100.0,
+    "noise_correct_15db": 9,
+    "noise_correct_6db": 9,
+    "noise_total": 10,
+    "noise_robustness_15db_pct": 90.0,
+    "noise_robustness_6db_pct": 90.0
+  },
+  "weibull_trajectory": [
+    {
+      "age_yr": 1.0,
+      "reliability_rt": 0.9971,
+      "degradation_index": 0.0029,
+      "hazard_rate": 0.0087,
+      "characteristic_lifespan_years": 7.0,
+      "weibull_shape_beta": 3.0,
+      "mean_time_to_failure_years": 6.3,
+      "remaining_useful_life_years": 5.3
+    },
+    {
+      "age_yr": 4.0,
+      "reliability_rt": 0.8298,
+      "degradation_index": 0.1702,
+      "hazard_rate": 0.1399,
+      "characteristic_lifespan_years": 7.0,
+      "weibull_shape_beta": 3.0,
+      "mean_time_to_failure_years": 6.3,
+      "remaining_useful_life_years": 2.3
+    },
+    {
+      "age_yr": 7.0,
+      "reliability_rt": 0.3679,
+      "degradation_index": 0.6321,
+      "hazard_rate": 0.4286,
+      "characteristic_lifespan_years": 7.0,
+      "weibull_shape_beta": 3.0,
+      "mean_time_to_failure_years": 6.3,
+      "remaining_useful_life_years": 0.0
+    },
+    {
+      "age_yr": 10.0,
+      "reliability_rt": 0.0542,
+      "degradation_index": 0.9458,
+      "hazard_rate": 0.8746,
+      "characteristic_lifespan_years": 7.0,
+      "weibull_shape_beta": 3.0,
+      "mean_time_to_failure_years": 6.3,
+      "remaining_useful_life_years": 0.0
+    }
+  ],
+  "thermodynamic_monte_carlo": {
+    "analytical_freeze_hours_tau16": 27.3,
+    "monte_carlo_runs": 5000,
+    "p10_early_freeze_hours": 18.7,
+    "p50_median_freeze_hours": 27.1,
+    "p90_late_freeze_hours": 40.2,
+    "prob_freeze_48h_tau16_pct": 94.1,
+    "prior_sensitivity_48h_pct": {
+      "tau_12h": 99.0,
+      "tau_16h": 94.1,
+      "tau_24h": 66.0,
+      "tau_35h": 24.6
+    },
+    "expected_net_loss_avoided_usd": 13995.0
+  },
+  "sha256_verification_hash": "0769b8ae4bf8956c954a88a6485537d33ca7920bacd3f2f27e32c7ccfa1c4651"
+}

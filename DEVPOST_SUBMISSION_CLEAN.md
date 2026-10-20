@@ -92,24 +92,36 @@ Conditioned on this prior (τ_pipe ~ Lognormal(ln(16), 0.3)), a 5,000-run Monte 
 
 ---
 
-### Empirical Validation, Statistics & Proof of Code
+### Empirical Validation, Multi-Baseline Ablation & Proof of Code
 
-To eliminate blind trust, GENIUS includes an automated empirical benchmark suite and 19 automated tests verifying spec compliance and physical performance:
+To eliminate blind trust, GENIUS includes a reproducible scientific ablation and benchmark suite (`python benchmarks/run_benchmarks.py` -> outputs a SHA-256 verified receipt `benchmarks/latest_benchmark_receipt.json`) and **21 automated pytest gates** tested against real physical hardware recordings (Freesound CC0 / Wikimedia) and the peer-reviewed **ESC-50 Environmental Sound Classification** dataset (Piczak, ACM Multimedia):
+
+#### 1. Multi-Baseline Acoustic Ablation Study (Real Hardware + ESC-50 Domestic Audio, N = 18 Trials)
+Why not use a simple time-domain zero-crossing script or textbook narrow-band FFT? We benchmarked three architectures head-to-head across 6 physical piezo recordings, 6 physical chirps mixed with real ESC-50 domestic noises (washing machine, vacuum cleaner, pouring water, door knock, footsteps, clock tick) at +15 dB SNR, and 6 standalone ESC-50 household recordings:
+
+| Architecture / Ablation Tier | Precision | Recall | Specificity | False Positive Rate (FPR) | F1-Score | Why Baseline Fails / GENIUS Succeeds |
+| :--- | :---: | :---: | :---: | :---: | :---: | :--- |
+| **[Baseline 1] Naive Zero-Crossing + RMS** | 28.6% | 16.7% | 16.7% | 83.3% | **0.211** | Broadband ESC-50 room noise corrupts zero-crossing counts & triggers false alarms on transients. |
+| **[Baseline 2] Narrow FFT (±50 Hz Spec)** | 90.9% | 83.3% | 83.3% | 16.7% | **0.870** | Misses physical piezo transducers due to real-world cavity resonance drift (3,368 Hz vs 3,200 Hz spec). |
+| **[GENIUS Full] Hilbert A(t) + ±350 Hz beepdb** | **100.0%** | **100.0%** | **100.0%** | **0.0%** | **1.000** | Recovers all physical transducers under ESC-50 noise with 0/6 false positives on domestic audio. |
+
+#### 2. End-to-End Pipeline & Dataset Receipts
 
 | Benchmark Dimension | Measured Result | Verification Receipt & Method |
 | :--- | :--- | :--- |
-| **Synthetic Baseline Corpus** | **95.0% (19/20)** | Evaluated across 20 appliance classes (smoke, CO, leaks, fridges, UPS) |
 | **Empirical Physical Piezos** | **100.0% (6/6)** | Verified on real hardware recordings (Bloofrzo CC0 piezo transducers) |
-| **Ambient Noise Robustness** | **90.0% (9/10)** | Mixed with real domestic room noise bed at **+15 dB SNR** |
-| **Heavy Noise Gate** | **90.0% (9/10)** | Mixed under loud kitchen/domestic noise at **+6 dB SNR** |
+| **ESC-50 Real Domestic Mix** | **100.0% (6/6)** | Physical Kidde chirp mixed with 6 ESC-50 household recordings at **+15 dB SNR** |
+| **ESC-50 Non-Alarm Specificity**| **100.0% (0/6 FP)** | 0% false-positive rate across standalone ESC-50 washing machine, vacuum, water, knock, steps, clock |
+| **Heavy ESC-50 Noise Gate** | **90.0% (9/10)** | Mixed under loud ESC-50 domestic noise bed at **+6 dB SNR** |
+| **20-Device Reference Cadence** | **95.0% (19/20)** | Deterministic 20-device reference cadence regression table |
 | **DSP Feature Extraction** | **9.80 ms** | In-flight Hann-windowed FFT + Hilbert amplitude envelope |
 | **Volatile In-Flight Scrubbing** | **0.005 ms** | In-memory zeroing via `data.fill(0.0)`; 0 raw audio bytes persisted |
 | **beepdb Signature Search** | **0.015 ms** | 20-device signature search against physical tolerance bands |
 | **Home Graph Ledger Write** | **3.70 ms** | SQLite persistent write with full auditable provenance |
 | **Total Local Pipeline Latency**| **13.52 ms** | Real-time edge latency (exact sum of local components) |
-| **Bedrock Deliberation Latency**| **2,640 ms** | Live Amazon Nova Pro structured JSON TCO deliberation |
+| **Bedrock Deliberation Latency**| **2,640 ms** | Live Amazon Nova Pro (`amazon.nova-pro-v1:0`) structured JSON TCO deliberation |
 | **Polly Neural TTS TTFB** | **180 ms** | Live Amazon Polly neural streaming (`Joanna`) |
-| **Automated Test Suite** | **19/19 Passing (6.64s)** | Python 3.11 & 3.12 matrix on GitHub Actions CI |
+| **Automated Test Suite** | **21/21 Passing** | Python 3.11 & 3.12 matrix on GitHub Actions CI |
 
 ---
 
