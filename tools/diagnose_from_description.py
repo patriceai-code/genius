@@ -139,36 +139,52 @@ def register_diagnose_from_description(server):
             provenance=f"manufacturer_manual:{source_url}"
         )
 
-        # 3. Create Proposal
-        proposal_kind = "order_replacement" if meaning == "end_of_life" else "replace_battery"
-        proposal_title = "Order Replacement Unit ($34.99)" if meaning == "end_of_life" else "Order 9V Batteries / Walkthrough"
+        # 3. Create Proposal only if match confidence is sufficient (>= 0.70)
+        prop = None
+        proposal_payload = {}
+        proposal_title = ""
+        if confidence >= 0.70:
+            proposal_kind = "order_replacement" if meaning == "end_of_life" else "replace_battery"
+            proposal_title = "Order Replacement Unit ($34.99)" if meaning == "end_of_life" else "Order 9V Batteries / Walkthrough"
 
-        proposal_payload = {
-            "title": proposal_title,
-            "device": f"{matched_brand} {device_class.replace('_', ' ').title()}",
-            "location": location,
-            "action": action,
-            "severity": severity,
-            "estimated_cost_usd": 34.99 if meaning == "end_of_life" else 8.99,
-            "simulated_shipping_partner": "Amazon Prime (Next-Day Delivery)"
-        }
+            proposal_payload = {
+                "title": proposal_title,
+                "device": f"{matched_brand} {device_class.replace('_', ' ').title()}",
+                "location": location,
+                "action": action,
+                "severity": severity,
+                "estimated_cost_usd": 34.99 if meaning == "end_of_life" else 8.99,
+                "simulated_shipping_partner": "Amazon Prime (Next-Day Delivery)"
+            }
 
-        import os
-        prop = GRAPH_STORE.create_proposal(
-            incident_id=incident["incident_id"],
-            kind=proposal_kind,
-            payload=proposal_payload,
-            proposal_id=f"prop_{device_class}_{meaning[:8]}_{os.urandom(3).hex()}"
-        )
+            import os
+            prop = GRAPH_STORE.create_proposal(
+                incident_id=incident["incident_id"],
+                kind=proposal_kind,
+                payload=proposal_payload,
+                proposal_id=f"prop_{device_class}_{meaning[:8]}_{os.urandom(3).hex()}"
+            )
 
-        spoken_diagnosis = (
-            f"Based on a chirp every {int(interval_s or 30)} seconds, that's your {location} {matched_brand} {device_class.replace('_', ' ')} "
-            f"indicating {meaning.replace('_', ' ')}. "
-        )
-        if meaning == "end_of_life":
-            spoken_diagnosis += "This means the chemical sensor has expired after its service lifetime—not a low battery. I have prepared a replacement order proposal for your review."
+        # Calibrated spoken diagnosis based on confidence
+        if confidence >= 0.85:
+            spoken_diagnosis = (
+                f"Based on a chirp every {int(interval_s or 30)} seconds, that's your {location} {matched_brand} {device_class.replace('_', ' ')} "
+                f"indicating {meaning.replace('_', ' ')}. "
+            )
+            if meaning == "end_of_life":
+                spoken_diagnosis += "This means the chemical sensor has expired after its service lifetime—not a low battery. I have prepared a replacement order proposal for your review."
+            else:
+                spoken_diagnosis += "I have staged a replacement battery walkthrough and order proposal for your confirmation."
+        elif confidence >= 0.70:
+            spoken_diagnosis = (
+                f"Based on a chirp every {int(interval_s or 30)} seconds, this is most consistent with a {matched_brand} {device_class.replace('_', ' ')} "
+                f"indicating {meaning.replace('_', ' ')}. I have staged a candidate proposal for your review."
+            )
         else:
-            spoken_diagnosis += "I have staged a replacement battery walkthrough and order proposal for your confirmation."
+            spoken_diagnosis = (
+                f"I detected a possible pattern matching a {matched_brand} {device_class.replace('_', ' ')}, but my confidence is low at {int(confidence * 100)} percent. "
+                f"Could you verify the brand name on the alarm faceplate or check how many seconds elapse between chirps?"
+            )
 
         return {
             "matched": True,
@@ -186,5 +202,5 @@ def register_diagnose_from_description(server):
                 "title": proposal_title,
                 "cost_usd": proposal_payload["estimated_cost_usd"],
                 "status": "staged_pending_user_confirmation"
-            }
+            } if prop else None
         }

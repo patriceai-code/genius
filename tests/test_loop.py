@@ -8,6 +8,7 @@ Tests:
 
 import pytest
 import os
+import json
 from graph.store import HomeGraphStore
 from tools.diagnose import register_diagnose
 from tools.confirm_action import register_confirm_action
@@ -81,7 +82,8 @@ async def test_state_remembers_across_loops(tmp_path):
         assert "end-of-life" in updated_health["summary"]
 
         # Step 3: Propose -> Confirm Gate
-        proposal_id = "prop_co_detector_end_of_l_01"
+        diag_json = json.loads(diag_text)
+        proposal_id = diag_json["proposal"]["id"]
         conf_res = await server.call_tool("confirm_action", {
             "proposal_id": proposal_id,
             "confirmed": True
@@ -89,6 +91,15 @@ async def test_state_remembers_across_loops(tmp_path):
         conf_text = [c.text for c in getattr(conf_res, "content", [])][0]
         assert "confirmed_and_executed" in conf_text
         assert "dispatched" in conf_text
+
+        # Step 4: Verify strict trust boundary rejects unverified/nonexistent proposal
+        bogus_res = await server.call_tool("confirm_action", {
+            "proposal_id": "prop_nonexistent_fake_id",
+            "confirmed": True
+        })
+        bogus_text = [c.text for c in getattr(bogus_res, "content", [])][0]
+        assert "error" in bogus_text
+        assert "not found in the Home Graph" in bogus_text
 
     finally:
         graph.store.GRAPH_STORE = original_store

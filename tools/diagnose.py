@@ -70,23 +70,27 @@ def register_diagnose(server):
         )
 
         # 3. Create Proposal in Home Graph (Strict Propose -> Confirm Model)
-        proposal_kind = "order_replacement" if match.meaning == "end_of_life" else "replace_battery"
-        proposal_title = "Order Replacement Unit ($34.99)" if match.meaning == "end_of_life" else "Order 9V Batteries / Walkthrough"
+        # Only stage purchase/replacement proposals if confidence is sufficient (>= 0.70)
+        prop = None
+        proposal_title = ""
+        if match.confidence >= 0.70:
+            proposal_kind = "order_replacement" if match.meaning == "end_of_life" else "replace_battery"
+            proposal_title = "Order Replacement Unit ($34.99)" if match.meaning == "end_of_life" else "Order 9V Batteries / Walkthrough"
 
-        proposal_payload = {
-            "title": proposal_title,
-            "device": f"{match.brand} {match.device_class.replace('_', ' ').title()}",
-            "location": location,
-            "action": match.action,
-            "incident_id": incident["incident_id"]
-        }
+            proposal_payload = {
+                "title": proposal_title,
+                "device": f"{match.brand} {match.device_class.replace('_', ' ').title()}",
+                "location": location,
+                "action": match.action,
+                "incident_id": incident["incident_id"]
+            }
 
-        prop = GRAPH_STORE.create_proposal(
-            incident_id=incident["incident_id"],
-            kind=proposal_kind,
-            payload=proposal_payload,
-            proposal_id=f"prop_{match.device_class}_{match.meaning[:8]}_{os.urandom(3).hex()}"
-        )
+            prop = GRAPH_STORE.create_proposal(
+                incident_id=incident["incident_id"],
+                kind=proposal_kind,
+                payload=proposal_payload,
+                proposal_id=f"prop_{match.device_class}_{match.meaning[:8]}_{os.urandom(3).hex()}"
+            )
 
         return {
             "entity_id": entity_id,
@@ -105,7 +109,7 @@ def register_diagnose(server):
                 "status": prop["status"],
                 "title": proposal_title,
                 "requires_confirmation": True
-            },
+            } if prop else None,
             "source_provenance": f"manufacturer_manual:{match.source_url}",
             "expected_specs": match_dict["expected_specs"]
         }

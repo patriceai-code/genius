@@ -34,6 +34,17 @@ def register_confirm_action(server):
                 "message": "Action was declined by the user. No external mutations performed."
             }
 
+        # Enforce strict trust boundary: never confirm a proposal that does not exist in the Home Graph
+        if not result_prop or (isinstance(result_prop, dict) and "error" in result_prop):
+            return {
+                "proposal_id": proposal_id,
+                "status": "error",
+                "executed": False,
+                "timestamp": now,
+                "error": "proposal_not_found",
+                "message": f"Proposal '{proposal_id}' was not found in the Home Graph. Cannot confirm an unverified proposal."
+            }
+
         # Execution payload (e.g. Amazon ordering / scheduling) derived from proposal record
         prop_payload = (result_prop or {}).get("payload", {}) if isinstance(result_prop, dict) else {}
         item_title = prop_payload.get("title") or prop_payload.get("device") or "Replacement Hardware Unit"
