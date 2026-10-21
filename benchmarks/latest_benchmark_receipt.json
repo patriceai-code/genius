@@ -1,57 +1,27 @@
 {
-  "timestamp_utc": "2026-10-22T14:30:33.462967+00:00",
+  "timestamp_utc": "2026-10-22T15:06:35.188192+00:00",
   "latency_budget_ms": {
-    "dsp_fft_hilbert_ms": 9.87,
-    "ephemeral_scrub_ms": 0.006,
-    "beepdb_search_ms": 0.023,
-    "graph_sqlite_ms": 3.07,
-    "total_local_pipeline_ms": 12.97
+    "dsp_fft_hilbert_ms": 10.54,
+    "ephemeral_scrub_ms": 0.005,
+    "beepdb_search_ms": 0.02,
+    "graph_sqlite_ms": 3.44,
+    "total_local_pipeline_ms": 14.0
   },
-  "acoustic_ablation_and_accuracy": {
-    "ablation_real_dataset_n18": {
-      "naive_zcr": {
-        "tp": 2,
-        "fn": 10,
-        "tn": 1,
-        "fp": 5,
-        "precision_pct": 28.6,
-        "recall_pct": 16.7,
-        "specificity_pct": 16.7,
-        "fpr_pct": 83.3,
-        "f1_score": 0.211,
-        "overall_accuracy_pct": 16.7
-      },
-      "uncalibrated_fft": {
-        "tp": 10,
-        "fn": 2,
-        "tn": 5,
-        "fp": 1,
-        "precision_pct": 90.9,
-        "recall_pct": 83.3,
-        "specificity_pct": 83.3,
-        "fpr_pct": 16.7,
-        "f1_score": 0.87,
-        "overall_accuracy_pct": 83.3
-      },
-      "genius_full": {
-        "tp": 12,
-        "fn": 0,
-        "tn": 6,
-        "fp": 0,
-        "precision_pct": 100.0,
-        "recall_pct": 100.0,
-        "specificity_pct": 100.0,
-        "fpr_pct": 0.0,
-        "f1_score": 1.0,
-        "overall_accuracy_pct": 100.0
-      }
+  "acoustic_validation": {
+    "synthetic_cadence_correct": 19,
+    "synthetic_cadence_total": 20,
+    "synthetic_cadence_accuracy_pct": 95.0,
+    "piezo_calibrated_matches": 2,
+    "piezo_calibrated_total": 2,
+    "tone_dsp_verified": 4,
+    "tone_dsp_total": 4,
+    "esc50_smoke_test": {
+      "negatives_rejected_below_050": 6,
+      "negatives_total": 6,
+      "fft_peak_recovery_15db": 6,
+      "naive_zcr_peak_recovery_15db": 1,
+      "mix_trials_total": 6
     },
-    "synthetic_correct": 19,
-    "synthetic_total": 20,
-    "synthetic_accuracy_pct": 95.0,
-    "physical_piezo_accuracy_pct": 100.0,
-    "esc50_mix_15db_accuracy_pct": 100.0,
-    "esc50_specificity_pct": 100.0,
     "noise_correct_15db": 9,
     "noise_correct_6db": 9,
     "noise_total": 10,
@@ -101,7 +71,8 @@
     }
   ],
   "thermodynamic_monte_carlo": {
-    "analytical_freeze_hours_tau16": 27.3,
+    "analytical_freeze_hours_from_68f": 27.3,
+    "analytical_freeze_hours_from_55f_cavity": 21.7,
     "monte_carlo_runs": 5000,
     "p10_early_freeze_hours": 18.7,
     "p50_median_freeze_hours": 27.1,
@@ -112,8 +83,7 @@
       "tau_16h": 94.1,
       "tau_24h": 66.0,
       "tau_35h": 24.6
-    },
-    "expected_net_loss_avoided_usd": 13995.0
+    }
   },
-  "sha256_verification_hash": "0769b8ae4bf8956c954a88a6485537d33ca7920bacd3f2f27e32c7ccfa1c4651"
+  "sha256_verification_hash": "fb6eee91ca8701a4d064810d650f4aed9b2d38fffad219e4f9a70ad7f569e31b"
 }

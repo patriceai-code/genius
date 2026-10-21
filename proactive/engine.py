@@ -130,13 +130,16 @@ def simulate_thermal_freeze_counterfactual(
         "counterfactual_analysis": {
             "branch_a_active_control": {
                 "furnace_state": "active_monitoring",
-                "minimum_predicted_pipe_temp_f": 52.0,
+                "minimum_predicted_pipe_temp_f": initial_indoor_temp_f,
                 "freeze_probability": 0.0,
                 "status": "safe_nominal"
             },
             "branch_b_unmitigated_lockout": {
                 "furnace_state": "filter_pressure_trip_lockout",
                 "time_to_pipe_freeze_hours": round(time_to_freeze_pipe_zone, 1),
+                "time_to_pipe_freeze_from_55f_cavity_hours": round(
+                    -tau_pipe_zone_hours * math.log((freeze_threshold - outdoor_temp_f) / (55.0 - outdoor_temp_f)), 1
+                ) if outdoor_temp_f < freeze_threshold else float("inf"),
                 "time_to_envelope_freeze_hours": round(time_to_freeze_building, 1),
                 "freeze_probability": pipe_freeze_risk_pct / 100.0,
                 "status": "critical_pipe_burst_risk"

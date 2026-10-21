@@ -125,7 +125,7 @@ def record_walkthrough():
             s3 = time.monotonic() - t0
             print(f"[UI 3] Recording act2_b3_confirm ({b3_dur:.2f}s)...", flush=True)
             time.sleep(1.0)
-            page.evaluate("async () => { await confirmActionDirect('prop_replace_co_001'); }")
+            page.evaluate("async () => { await confirmActionDirect(currentProposalId || 'prop_replace_co_001'); }")
             scroll_to_bottom(page)
             elapsed_3 = (time.monotonic() - t0) - s3
             time.sleep(max(0.5, b3_dur - elapsed_3))

@@ -34,17 +34,22 @@ def register_confirm_action(server):
                 "message": "Action was declined by the user. No external mutations performed."
             }
 
-        # Execution payload (e.g. Amazon ordering / scheduling)
+        # Execution payload (e.g. Amazon ordering / scheduling) derived from proposal record
+        prop_payload = (result_prop or {}).get("payload", {}) if isinstance(result_prop, dict) else {}
+        item_title = prop_payload.get("title") or prop_payload.get("device") or "Replacement Hardware Unit"
+        suffix = proposal_id[-6:].upper() if len(proposal_id) >= 6 else "A1"
+        order_ref = f"AMZN-2026-94819-{suffix}"
         return {
             "proposal_id": proposal_id,
             "status": "confirmed_and_executed",
             "executed": True,
             "timestamp": now,
             "result": {
-                "order_ref": "AMZN-2026-94819",
-                "item": "Kidde Hardwired Carbon Monoxide Alarm with 10-Year Sealed Battery",
-                "estimated_delivery": "Today by 6:00 PM",
+                "order_ref": order_ref,
+                "item": item_title,
+                "device": prop_payload.get("device", "Kidde KN-COPP-3"),
+                "estimated_delivery": "Today by 6:00 PM (Simulated Fulfillment)",
                 "tracking_status": "dispatched"
             },
-            "message": "Action confirmed. Replacement unit dispatched. Tracking registered in Home Graph for proactive follow-up."
+            "message": f"Action confirmed for {proposal_id}. Order {order_ref} ({item_title}) staged. Tracking registered in Home Graph for proactive follow-up."
         }

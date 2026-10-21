@@ -147,10 +147,10 @@ BEATS = [
         "visual_type": "still",
         "visual_file": "04_benchmarks_beepdb.png",
         "narrator_text": (
-            "Every claim is backed by a multi-baseline ablation study: where naive zero-crossing drops to a "
-            "0.211 F-1 score on the peer-reviewed E-S-C-50 domestic dataset, GENIUS achieves a 1.000 F-1 "
-            "score with zero false positives in 13.52 milliseconds across 21 passing test gates and our "
-            "open-source beep-D-B library."
+            "Every claim is backed by transparent, reproducible tests: a 13.52 millisecond local pipeline, "
+            "95 percent accuracy on our 20-device synthetic cadence table, a 12-trial E-S-C-50 domestic "
+            "noise smoke test where Hann F-F-T recovers 6 of 6 peaks versus 1 of 6 for naive zero-crossing, "
+            "22 passing test gates, and our open-source beep-D-B library."
         ),
     },
     {

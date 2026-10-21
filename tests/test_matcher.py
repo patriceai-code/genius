@@ -141,65 +141,27 @@ class TestAcousticMatcherGate:
         assert match_819807.meaning == "end_of_life"
         assert match_819807.confidence >= 0.85
 
-        # 3. Real Hardware UPS / Power-On Self Test Beep (Wikimedia Commons, CC0)
+        # 3-6. Additional Real Hardware Tone Recordings (DSP Spectral & Envelope Feature Extraction Checks)
+        # Note: Tested strictly for Hilbert pulse width and Hann FFT peak extraction, not relabeled as proxy appliances.
         clip_post = os.path.join(CLIPS_DIR, "real_hardware_post_beep_cc0.wav")
         res_post = process_file_ephemeral(clip_post)
-        feats_post = res_post.features
-        assert 1900 <= feats_post["peak_frequency_hz"] <= 2100
+        assert 1900 <= res_post.features["peak_frequency_hz"] <= 2100
+        assert res_post.features["pulse_duration_ms"] > 20.0
 
-        match_post = match_acoustic_features(
-            interval_s=15.0,
-            peak_freq_hz=feats_post["peak_frequency_hz"],
-            duration_ms=feats_post["pulse_duration_ms"]
-        )
-        assert match_post is not None
-        assert match_post.device_class == "ups_battery_backup"
-        assert match_post.confidence >= 0.85
-
-        # 4. Real Appliance Microwave / Refrigerator Alert (Freesound #144227, CC-BY 4.0)
         clip_appliance = os.path.join(CLIPS_DIR, "real_microwave_beep_144227.wav")
         res_appliance = process_file_ephemeral(clip_appliance)
-        feats_appliance = res_appliance.features
-        assert 2000 <= feats_appliance["peak_frequency_hz"] <= 2200
+        assert 2000 <= res_appliance.features["peak_frequency_hz"] <= 2200
+        assert res_appliance.features["pulse_duration_ms"] > 20.0
 
-        match_appliance = match_acoustic_features(
-            interval_s=120.0,
-            peak_freq_hz=feats_appliance["peak_frequency_hz"],
-            duration_ms=feats_appliance["pulse_duration_ms"]
-        )
-        assert match_appliance is not None
-        assert match_appliance.device_class == "refrigerator"
-        assert match_appliance.confidence >= 0.80
-
-        # 5. Real Warning / Dehumidifier Buzzer (Wikimedia Commons, CC0)
         clip_buzzer = os.path.join(CLIPS_DIR, "real_buzzer.wav")
         res_buzzer = process_file_ephemeral(clip_buzzer)
-        feats_buzzer = res_buzzer.features
-        assert 2400 <= feats_buzzer["peak_frequency_hz"] <= 2600
+        assert 2400 <= res_buzzer.features["peak_frequency_hz"] <= 2600
+        assert res_buzzer.features["pulse_duration_ms"] > 20.0
 
-        match_buzzer = match_acoustic_features(
-            interval_s=60.0,
-            peak_freq_hz=feats_buzzer["peak_frequency_hz"],
-            duration_ms=feats_buzzer["pulse_duration_ms"]
-        )
-        assert match_buzzer is not None
-        assert match_buzzer.device_class == "dehumidifier"
-        assert match_buzzer.confidence >= 0.80
-
-        # 6. Real Active Horn / Water Leak Alarm (Wikimedia / pdsounds #695, Public Domain)
         clip_horn = os.path.join(CLIPS_DIR, "real_smoke_alarm_cori_pd.wav")
         res_horn = process_file_ephemeral(clip_horn)
-        feats_horn = res_horn.features
-        assert 2700 <= feats_horn["peak_frequency_hz"] <= 2900
-
-        match_horn = match_acoustic_features(
-            interval_s=15.0,
-            peak_freq_hz=feats_horn["peak_frequency_hz"],
-            duration_ms=feats_horn["pulse_duration_ms"]
-        )
-        assert match_horn is not None
-        assert match_horn.device_class == "water_leak_detector"
-        assert match_horn.confidence >= 0.85
+        assert 2700 <= res_horn.features["peak_frequency_hz"] <= 2900
+        assert res_horn.features["pulse_duration_ms"] > 20.0
 
     def test_end_to_end_core_loop(self):
         """
@@ -374,24 +336,21 @@ class TestAcousticMatcherGate:
             assert m_mix.device_class == "smoke_detector"
             assert m_mix.confidence >= 0.95
 
-    def test_scientific_ablation_proof_against_baselines(self):
+    def test_fft_vs_naive_zcr_under_esc50_noise(self):
         """
-        Scientific Ablation Gate:
-        Proves empirically on the 18 real-world audio evaluations (6 physical hardware recordings,
-        6 physical + ESC-50 domestic mixes at +15 dB SNR, and 6 standalone ESC-50 non-alarm noises)
-        that GENIUS (Hilbert Analytic Envelope + Hann FFT + empirical ±350 Hz beepdb) strictly
-        outperforms both Naive Time-Domain Zero-Crossing (F1=0.211) and Uncalibrated Narrow FFT (F1=0.870),
-        achieving F1=1.000 and 0.0% False Positive Rate.
+        Verifies the n=12 ESC-50 domestic audio smoke test in benchmarks/run_benchmarks.py:
+        - 6/6 standalone ESC-50 household clips remain below 0.50 matcher confidence.
+        - 6/6 physical Kidde chirp + ESC-50 mixes (+15 dB SNR) recover the 3,368 Hz peak via Hann FFT,
+          whereas naive global time-domain zero-crossing is skewed by low-frequency background energy.
         """
-        from benchmarks.run_benchmarks import run_ablation_and_dataset_benchmark
+        from benchmarks.run_benchmarks import run_acoustic_validation_suite
 
-        res = run_ablation_and_dataset_benchmark()
-        abl = res["ablation_real_dataset_n18"]
+        res = run_acoustic_validation_suite()
+        esc = res["esc50_smoke_test"]
 
-        assert abl["genius_full"]["f1_score"] == 1.000
-        assert abl["genius_full"]["fpr_pct"] == 0.0
-        assert abl["genius_full"]["f1_score"] > abl["uncalibrated_fft"]["f1_score"]
-        assert abl["uncalibrated_fft"]["f1_score"] > abl["naive_zcr"]["f1_score"]
+        assert esc["negatives_rejected_below_050"] == 6
+        assert esc["fft_peak_recovery_15db"] == 6
+        assert esc["fft_peak_recovery_15db"] > esc["naive_zcr_peak_recovery_15db"]
 
 
 

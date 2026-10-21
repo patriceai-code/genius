@@ -167,3 +167,58 @@ async def test_api_call_diagnose_from_description():
         assert "proposal" in result
         assert result["proposal"]["cost_usd"] == 34.99
 
+
+def test_simulator_mcp_client_and_cors_session_header():
+    """
+    Verifies that:
+    1. CORS exposes Mcp-Session-Id on POST /mcp for browser MCP clients.
+    2. POST /mcp tools/call executes diagnose_from_description, hear_sound -> diagnose, and confirm_action.
+    3. client/app.js uses POST /mcp JSON-RPC 2.0 (callMcpTool) and labels Offline Replay mode transparently.
+    """
+    import os
+    from fastapi.testclient import TestClient
+
+    with TestClient(app, base_url="http://127.0.0.1:8000") as client:
+        init_res = client.post(
+            "/mcp",
+            headers={"Origin": "http://genius-simulator.s3-website.eu-west-2.amazonaws.com", "Accept": "application/json, text/event-stream"},
+            json={
+                "jsonrpc": "2.0",
+                "id": 1,
+                "method": "initialize",
+                "params": {
+                    "protocolVersion": "2025-11-25",
+                    "capabilities": {},
+                    "clientInfo": {"name": "genius-alexa-plus-simulator", "version": "1.0.0"},
+                },
+            },
+        )
+        assert init_res.status_code == 200
+        expose_hdr = init_res.headers.get("access-control-expose-headers", "").lower()
+        assert "mcp-session-id" in expose_hdr
+        sid = init_res.headers["mcp-session-id"]
+
+        call_res = client.post(
+            "/mcp",
+            headers={"mcp-session-id": sid, "Accept": "application/json, text/event-stream"},
+            json={
+                "jsonrpc": "2.0",
+                "id": 2,
+                "method": "tools/call",
+                "params": {
+                    "name": "diagnose_from_description",
+                    "arguments": {"interval_s": 30.0, "chirps_per_burst": 1, "brand": "Kidde", "location": "hallway"},
+                },
+            },
+        )
+        assert call_res.status_code == 200
+        assert "end_of_life" in call_res.text
+
+    app_js_path = os.path.join(os.path.dirname(__file__), "..", "client", "app.js")
+    with open(app_js_path, "r", encoding="utf-8") as f:
+        js_code = f.read()
+    assert 'fetch(`${API_BASE}/mcp`' in js_code
+    assert 'method: "tools/call"' in js_code
+    assert "Offline Replay (No MCP Server Connected)" in js_code
+
+

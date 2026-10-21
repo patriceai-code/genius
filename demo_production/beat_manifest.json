@@ -98,10 +98,10 @@
     "act": 4,
     "visual_type": "still",
     "visual_file": "04_benchmarks_beepdb.png",
-    "narrator_text": "Every claim is backed by reproducible code: a 13.52 millisecond local pipeline, 100 percent accuracy on physical piezo recordings, 90 percent accuracy under heavy 6-decibel room noise, 19 passing test gates, and beep-D-B \u2014 our standalone open-source acoustic library under M-I-T and C-C-B-Y 4.0.",
+    "narrator_text": "Every claim is backed by transparent, reproducible tests: a 13.52 millisecond local pipeline, 95 percent accuracy on our 20-device synthetic cadence table, a 12-trial E-S-C-50 domestic noise smoke test where Hann F-F-T recovers 6 of 6 peaks versus 1 of 6 for naive zero-crossing, 22 passing test gates, and our open-source beep-D-B library.",
     "audio_file": "demo_production\\audio_synced\\act4_b2_benchmarks_beepdb.mp3",
-    "raw_duration": 18.778,
-    "duration": 18.978
+    "raw_duration": 21.222,
+    "duration": 21.422
   },
   {
     "id": "act4_b3_business_outro",

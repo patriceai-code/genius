@@ -77,22 +77,23 @@ Evaluating counterfactual futures: For vulnerable pipe zones in unheated cavitie
 
 ### 3. Empirical Validation, Statistics & Proof of Code
 
-To eliminate blind trust, GENIUS includes an automated empirical benchmark suite ([`benchmarks/run_benchmarks.py`](benchmarks/run_benchmarks.py)) and 19 automated tests verifying spec compliance and physical performance:
+To eliminate blind trust, GENIUS includes an automated empirical benchmark suite ([`benchmarks/run_benchmarks.py`](benchmarks/run_benchmarks.py)) and 22 automated tests verifying spec compliance and physical performance:
 
-| Benchmark Dimension | Measured Result | Verification Receipt & Method |
+| Benchmark Dimension | Measured Result | Honest Scope & Verification Method |
 | :--- | :--- | :--- |
-| **Synthetic Baseline Corpus** | **95.0% (19/20)** | Evaluated across 20 appliance classes (smoke, CO, leaks, fridges, UPS) |
-| **Empirical Physical Piezos** | **100.0% (6/6)** | Verified on real hardware recordings (Bloofrzo CC0 piezo transducers) |
-| **Ambient Noise Robustness** | **90.0% (9/10)** | Mixed with real domestic room noise bed at **+15 dB SNR** |
-| **Heavy Noise Gate** | **90.0% (9/10)** | Mixed under loud kitchen/domestic noise at **+6 dB SNR** |
+| **20-Device Synthetic Cadence Suite** | **95.0% (19/20)** | Multi-burst synthetic WAV regression across all 20 `beepdb` rows (`clip_04` is a 30s Kidde smoke vs CO conservative tie-break) |
+| **Physical Smoke Piezos (Bloofrzo CC0)** | **2/2 Calibrated** | Real 1.0s single-chirp recordings (`#819808` at `3,368.1 Hz`, `#819807` at `3,122.3 Hz`); used to calibrate the `±350 Hz` band with user-supplied `30s`/`60s` cadence |
+| **Real Hardware Tone DSP Extraction** | **4/4 Verified** | Real POST beep, appliance beep, buzzer, and alarm recordings verified for accurate Hilbert pulse width and Hann FFT peak extraction |
+| **ESC-50 Domestic Noise Smoke Test** | **6/6 Spec · 6/6 Peak** | `n=12` smoke test on 6 real ESC-50 domestic clips (washer, vacuum, water, knock, steps, clock): `6/6` standalone clips stay `< 0.50` confidence; `6/6` `+15 dB` chirp mixes recover the `3,368 Hz` peak via Hann FFT vs `1/6` for naive global zero-crossing |
+| **Ambient & Heavy Noise Gate** | **90.0% (9/10)** | 10 synthetic cadence clips mixed with real ESC-50 domestic room noise bed at **+15 dB** and **+6 dB SNR** |
 | **DSP Feature Extraction** | **9.80 ms** | In-flight Hann-windowed FFT + Hilbert amplitude envelope |
 | **Volatile In-Flight Scrubbing** | **0.005 ms** | In-memory zeroing via `data.fill(0.0)`; 0 raw audio bytes persisted |
-| **beepdb Signature Search** | **0.015 ms** | 20-device signature search against physical tolerance bands |
+| **beepdb Signature Search** | **0.016 ms** | 20-device signature search against physical tolerance bands |
 | **Home Graph Ledger Write** | **3.70 ms** | SQLite persistent write with full auditable provenance |
 | **Total Local Pipeline Latency**| **13.52 ms** | Real-time edge latency (exact sum of local components) |
 | **Bedrock Deliberation Latency**| **2,640 ms** | Live Amazon Nova Pro structured JSON TCO deliberation |
 | **Polly Neural TTS TTFB** | **180 ms** | Live Amazon Polly neural streaming (`Joanna`) |
-| **Automated Test Suite** | **19/19 Passing (6.64s)** | Python 3.11 & 3.12 matrix on GitHub Actions CI |
+| **Automated Test Suite** | **22/22 Passing** | Python 3.11 & 3.12 matrix on GitHub Actions CI |
 
 ---
 
@@ -127,7 +128,7 @@ GENIUS transforms Alexa from a passive voice utility into an essential home infr
 
 | Judging Criterion | How GENIUS Fulfills Evaluation Criteria | Empirical Proof / Receipt |
 | :--- | :--- | :--- |
-| **1. Tech Implementation**<br>*(Execution & Tech Leverage)* | • **Alexa+ Track:** 100% compliant self-hosted FastMCP Server speaking **MCP Streamable HTTP (2025-11-25)**, validated with the official MCP Python SDK `StreamableHTTPClient` reference client.<br>• **12 Strictly Typed Tools:** Includes voice-native `diagnose_from_description` as well as companion mic `hear_sound`.<br>• **AWS Builder Mini-Challenge:** 100% Amazon infrastructure using **Amazon Bedrock Nova Pro** (`amazon.nova-pro-v1:0`) for 5-yr TCO deliberation & tag vision, **Amazon Polly Neural TTS** (`Joanna`), and **AWS S3 Static Website Hosting**.<br>• **Open Source Mini-Challenge:** Standalone package [`beepdb`](https://github.com/patriceai-code/beepdb) with CLI, MIT code, and CC-BY 4.0 data.<br>• **Sub-15ms DSP & Zero Storage:** Hilbert transform analytic envelope $A(t)$ and volatile memory scrubbing proving zero bytes stored to disk. | • **19/19 Passing Tests** in 6.64s on Python 3.11/3.12 CI.<br>• **Total Local Pipeline Latency:** **13.52 ms**.<br>• **100% Physical Accuracy** on Bloofrzo CC0 piezo hardware.<br>• Live Bedrock Nova Pro latency: **2,640 ms**.<br>• Polly Neural TTS TTFB: **180 ms**. |
+| **1. Tech Implementation**<br>*(Execution & Tech Leverage)* | • **Alexa+ Track:** 100% compliant self-hosted FastMCP Server speaking **MCP Streamable HTTP (2025-11-25)**, paired with a spec-compliant browser MCP client (`client/app.js`) calling `POST /mcp`.<br>• **12 Strictly Typed Tools:** Includes voice-native `diagnose_from_description` as well as companion mic `hear_sound`.<br>• **AWS Builder Mini-Challenge:** 100% Amazon infrastructure using **Amazon Bedrock Nova Pro** (`amazon.nova-pro-v1:0`) for 5-yr TCO deliberation & tag vision, **Amazon Polly Neural TTS** (`Joanna`), and **AWS S3 Static Website Hosting**.<br>• **Open Source Mini-Challenge:** Standalone package [`beepdb`](https://github.com/patriceai-code/beepdb) with CLI, MIT code, and CC-BY 4.0 data.<br>• **Sub-15ms DSP & Zero Storage:** Hilbert transform analytic envelope $A(t)$ and volatile memory scrubbing proving zero bytes stored to disk. | • **22/22 Passing Tests** on Python 3.11/3.12 CI.<br>• **Total Local Pipeline Latency:** **13.52 ms**.<br>• **2/2 Calibrated Physical Piezos** + **4/4 Hardware Tone DSP Checks** + **6/6 ESC-50 Smoke Test**.<br>• Live Bedrock Nova Pro latency: **2,640 ms**.<br>• Polly Neural TTS TTFB: **180 ms**. |
 | **2. Design**<br>*(Coherence & Platform Fit)* | • **Voice-First Multimodal Synergy:** Designed specifically for Echo & Alexa+ preview devices. Natural voice handles the immediate acoustic query, while the visual surface (tablet simulator / Echo Show) renders rich **Acoustic Evidence Cards** with manual citations without verbal clutter.<br>• **The House Speaks First:** Proactive Server-Sent Events (SSE) push unprompted amber notification cards when a replacement part arrives.<br>• **Strict Propose $\rightarrow$ Confirm Trust Boundary:** Protects customer peace-of-mind by never executing transactions without explicit confirmation.<br>• **Privacy Surface:** *"What Does GENIUS Know?"* provides transparent provenance inspection and consent toggles. | • **Live Cloud Simulator:** Hosted on AWS S3 with interactive demo controls and 28 CC0 audio test clips.<br>• **ADR 001, 002, 003** documenting clean architectural patterns. |
 | **3. Potential Impact**<br>*(Customer Need & Viability)* | • **Ubiquitous Need:** Solves the 3:14 AM chirping crisis across residential homes containing unmonitored piezoceramic transducers.<br>• **Massive Loss Prevention:** Prevents **$12,500** average water flood claims and **$15,000+** frozen pipe bursts via continuous building thermodynamics.<br>• **Life Safety:** Eliminates the fatal confusion where homeowners mistake expired CO alarms for low batteries.<br>• **Viable Beyond Hackathon:** 4 sustainable revenue engines: Prime fulfillment GMV (45%), carrier loss-mitigation telemetry (30%), Alexa+ \$9.99/mo retention (15%), and warranty claim recovery (10%). | • **Lumped-Capacitance Math:** Predicts pipe zone freezing in $27.3\text{ hours}$ at $24^\circ\text{F}$ ($\tau_{\text{pipe}} = 16.0\text{h}$); 5,000-run Monte Carlo yields **94.1% freeze risk**.<br>• Fully articulated business model with unit economics. |
 | **4. Quality of the Idea**<br>*(Creativity & Ecosystem Mastery)* | • **From Chatbot to World-Model:** Transcends naive LLM wrappers by giving the home a continuous physical mental model that Alexa **wears**.<br>• **Mathematical Rigor:** Continuous two-parameter Weibull reliability distributions ($R(t) = \exp(-(t/\eta)^\beta)$) and dynamic fleet scores ($\bar{R}_{\text{fleet}}$).<br>• **Acoustic Privacy by Construction:** Overcomes smart home audio surveillance anxiety by actively clearing buffers immediately after FFT feature extraction and verifying zero disk retention.<br>• **Deep MCP Ecosystem Mastery:** Pioneers spec-compliant proactive push patterns over Streamable HTTP and structured proposal workflows. | • [github.com/patriceai-code/genius](https://github.com/patriceai-code/genius)<br>• [github.com/patriceai-code/beepdb](https://github.com/patriceai-code/beepdb)<br>• 12 registered MCP tools conforming to spec 2025-11-25. |
@@ -145,8 +146,8 @@ GENIUS transforms Alexa from a passive voice utility into an essential home infr
 - [x] Primary Repo Public: [github.com/patriceai-code/genius](https://github.com/patriceai-code/genius)
 - [x] Open Source Library Public: [github.com/patriceai-code/beepdb](https://github.com/patriceai-code/beepdb)
 - [x] Live AWS S3 Simulator Endpoint: [http://genius-simulator-115207986956.s3-website.eu-west-2.amazonaws.com](http://genius-simulator-115207986956.s3-website.eu-west-2.amazonaws.com)
-- [x] 19/19 Passing Test Suite across Python 3.11 & 3.12 CI
-- [x] Record a video under 3:00 (`demo_production/genius_official_demo.mp4` & `C:\Users\zache\Videos\genius_official_demo.mp4` — 2m 45s)
+- [x] 22/22 Passing Test Suite across Python 3.11 & 3.12 CI
+- [x] Record a video under 3:00 (`demo_production/genius_official_demo.mp4` & `C:\Users\zache\Videos\genius_official_demo.mp4` — 2m 48s)
 - [ ] Upload video to YouTube (Public or Unlisted) and paste URL into Devpost
 - [ ] Paste Section 2 into the Devpost "About the Project" box
 - [ ] Paste [FEEDBACK.md](FEEDBACK.md) into Devpost Feedback fields

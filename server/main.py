@@ -56,7 +56,10 @@ async def lifespan(app: FastAPI):
     logger.info("Starting GENIUS MCP Server...")
     logger.info("MCP Streamable HTTP transport configured at %s", CONFIG.streamable_path)
     logger.info("SSE Proactive Events channel configured at %s", CONFIG.sse_events_path)
-    async with mcp_server._lowlevel_server._session_manager.run():
+    sm = mcp_server._lowlevel_server._session_manager
+    if getattr(sm, "_has_started", False):
+        sm._has_started = False
+    async with sm.run():
         yield
     logger.info("Shutting down GENIUS MCP Server...")
 
@@ -69,13 +72,14 @@ app = FastAPI(
     description="GENIUS MCP Server with Streamable HTTP & SSE Push for Alexa+ Developer Hackathon"
 )
 
-# CORS middleware for local web client testing
+# CORS middleware for local and S3 web client MCP Streamable HTTP access
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
+    expose_headers=["Mcp-Session-Id", "mcp-session-id"],
 )
 
 
@@ -90,6 +94,12 @@ async def mcp_streamable_http_endpoint(request: Request):
     scope = dict(request.scope)
     scope["path"] = "/mcp"
     scope["raw_path"] = b"/mcp"
+    # Normalize Host/Origin for internal ASGI handoff so MCP SDK TransportSecurityMiddleware
+    # permits cross-origin browser simulator clients already authorized by FastAPI CORSMiddleware
+    scope["headers"] = [
+        (k, v) for (k, v) in scope.get("headers", [])
+        if k.lower() != b"origin"
+    ]
 
     res_headers = []
     res_status = 200
@@ -259,32 +269,47 @@ async def trigger_freeze_warning(temp_f: float = 24.0):
 
 
 @app.post("/simulate/real_chirp")
-async def simulate_real_chirp():
-    """Simulates diagnosing a verified physical smoke detector recording."""
+async def simulate_real_chirp(request: Request):
+    """Extracts acoustic features from the physical WAV via hear_sound and passes them into diagnose."""
+    body = await request.json() if await request.body() else {}
+    user_supplied_interval_s = float(body.get("interval_s", 30.0))
     real_clip_path = "tests/clips/real_smoke_detector_chirp_819808.wav"
-    await mcp_server.call_tool("hear_sound", {"clip_path": real_clip_path, "location": "hallway"})
+    res_hs = await mcp_server.call_tool("hear_sound", {"clip_path": real_clip_path, "location": "hallway"})
+    hs_text = [c.text for c in getattr(res_hs, "content", [])][0] if getattr(res_hs, "content", None) else "{}"
+    hs_data = json.loads(hs_text)
+    feats = hs_data.get("features", {})
+    measured_freq = float(feats.get("peak_frequency_hz", 0.0))
+    measured_dur = float(feats.get("pulse_duration_ms", 0.0))
+
     res_diag = await mcp_server.call_tool("diagnose", {
-        "interval_s": 30.0,
-        "peak_freq_hz": 3368.0,
-        "duration_ms": 101.5,
+        "interval_s": user_supplied_interval_s,
+        "peak_freq_hz": measured_freq,
+        "duration_ms": measured_dur,
         "location": "hallway",
         "clip_id": "real_smoke_detector_chirp_819808.wav"
     })
-    
+    diag_text = [c.text for c in getattr(res_diag, "content", [])][0] if getattr(res_diag, "content", None) else "{}"
+    diag_data = json.loads(diag_text)
+    prop_id = (diag_data.get("proposal") or {}).get("id", "prop_smoke_low_batt")
+
     event = {
         "id": f"evt_real_chirp_{uuid.uuid4().hex[:6]}",
         "type": "acoustic_detection",
         "timestamp": datetime.datetime.now(datetime.timezone.utc).isoformat(),
-        "spoken_text": "That's your Kidde Smoke Detector in your hallway signaling a low battery with a 30-second chirp. I can guide you through replacing the battery when you're ready.",
-        "card_title": "Verified Physical Chirp: Kidde Smoke Detector",
-        "card_body": "Empirical recording match: 3,368 Hz piezo resonance, 101 ms pulse, 30s interval. Sourced from Bloofrzo (CC0). Raw audio was zero-wiped in RAM.",
+        "proposal_id": prop_id,
+        "spoken_text": diag_data.get("spoken_summary", ""),
+        "card_title": f"Companion Sensor DSP: {diag_data.get('brand', 'Kidde')} {diag_data.get('device_class', '').replace('_', ' ').title()}",
+        "card_body": (
+            f"Measured via Hilbert/FFT from WAV: {measured_freq:.1f} Hz peak, {measured_dur:.1f} ms pulse "
+            f"(user-reported {user_supplied_interval_s:.0f}s cadence). Raw audio buffer zeroed in RAM."
+        ),
         "actions": [
-            {"id": "confirm", "label": "Order 9V Battery ($8.99)"},
+            {"id": "confirm", "label": (diag_data.get("proposal") or {}).get("title", "Confirm Action")},
             {"id": "dismiss", "label": "Dismiss"}
         ]
     }
     await SSE_BROADCASTER.broadcast(event)
-    return JSONResponse({"status": "success", "diagnosis": [c.text for c in getattr(res_diag, "content", [])]})
+    return JSONResponse({"status": "success", "hear_sound": hs_data, "diagnosis": diag_data})
 
 
 # Mount Static Files for Client Simulator and Test Clips

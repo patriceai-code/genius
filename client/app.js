@@ -1,15 +1,19 @@
 /**
  * GENIUS Device Simulator Client Application
- * Communicates with self-hosted FastMCP server via Streamable HTTP & SSE
- * Supports Live Backend and Cloud Interactive Demo Modes
+ * Spec-Compliant Model Context Protocol (MCP 2025-11-25) Streamable HTTP Client
+ * Executes JSON-RPC 2.0 (initialize -> notifications/initialized -> tools/list -> tools/call)
+ * directly against POST /mcp with Mcp-Session-Id header management, plus /events SSE push.
+ * Includes transparent Offline Replay Mode when opened statically without a live backend.
  */
 
 let API_BASE = localStorage.getItem("genius_api_base") || window.location.origin;
 let activeEventSource = null;
 let currentProposalId = null;
-let isCloudDemoMode = false;
+let isOfflineReplayMode = false;
+let mcpSessionId = null;
+let jsonRpcIdCounter = 1;
 
-// Fallback Catalog of Registered 12 MCP Tools for Cloud Demo Mode
+// Fallback Catalog of Registered 12 MCP Tools for Offline Replay Mode
 const FALLBACK_TOOLS = [
   { name: "hear_sound", description: "Acoustic sensor entry point. Ingests in-flight audio or cadence description, extracts spectral features, and strictly purges raw audio from memory." },
   { name: "diagnose", description: "Diagnoses an acoustic pattern against known device beep codes (beepdb). Writes incident and resolution proposal to the Home Graph." },
@@ -25,37 +29,159 @@ const FALLBACK_TOOLS = [
   { name: "deliberate_repair", description: "AWS Builder Specialist Deliberation. Invokes Amazon Bedrock (Nova Pro) for thermodynamic and economic repair-vs-replace analysis." }
 ];
 
-// Initialize when DOM loads
 document.addEventListener("DOMContentLoaded", () => {
-  detectServerAndInit();
+  initMcpStreamableClient();
 });
 
-async function detectServerAndInit() {
+/**
+ * Parses an MCP Streamable HTTP response body (supports both SSE-framed `data: {...}` and plain JSON).
+ */
+function parseMcpResponseBody(rawText) {
+  if (!rawText) return null;
+  const trimmed = rawText.trim();
+  if (trimmed.startsWith("{")) {
+    try {
+      return JSON.parse(trimmed);
+    } catch (e) {
+      // fall through to line parser
+    }
+  }
+  const lines = trimmed.split(/\r?\n/);
+  for (let i = lines.length - 1; i >= 0; i--) {
+    const line = lines[i].trim();
+    if (line.startsWith("data:")) {
+      const payloadStr = line.slice(5).trim();
+      if (payloadStr) {
+        try {
+          return JSON.parse(payloadStr);
+        } catch (e) {
+          console.warn("Failed to parse SSE JSON-RPC data line:", e);
+        }
+      }
+    }
+  }
+  return null;
+}
+
+/**
+ * Performs the official MCP 2025-11-25 Streamable HTTP handshake against POST /mcp:
+ * 1. POST /mcp (method: "initialize") -> captures Mcp-Session-Id header
+ * 2. POST /mcp (method: "notifications/initialized") with Mcp-Session-Id
+ * 3. POST /mcp (method: "tools/list") to populate the tool drawer from the live MCP server
+ */
+async function initMcpStreamableClient() {
   const statusEl = document.getElementById("server-status");
   try {
-    const res = await fetch(`${API_BASE}/api/config`, { signal: AbortSignal.timeout(2000) });
-    if (res.ok) {
-      isCloudDemoMode = false;
-      statusEl.innerHTML = '<span class="pulse-dot"></span> Live MCP Server';
+    const initRes = await fetch(`${API_BASE}/mcp`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Accept": "application/json, text/event-stream"
+      },
+      body: JSON.stringify({
+        jsonrpc: "2.0",
+        id: jsonRpcIdCounter++,
+        method: "initialize",
+        params: {
+          protocolVersion: "2025-11-25",
+          capabilities: {},
+          clientInfo: { name: "genius-alexa-plus-simulator", version: "1.0.0" }
+        }
+      }),
+      signal: AbortSignal.timeout(2500)
+    });
+
+    if (initRes.ok) {
+      mcpSessionId = initRes.headers.get("mcp-session-id") || initRes.headers.get("Mcp-Session-Id");
+      isOfflineReplayMode = false;
+
+      // Complete MCP handshake with notifications/initialized
+      const notifHeaders = {
+        "Content-Type": "application/json",
+        "Accept": "application/json, text/event-stream"
+      };
+      if (mcpSessionId) {
+        notifHeaders["mcp-session-id"] = mcpSessionId;
+      }
+      await fetch(`${API_BASE}/mcp`, {
+        method: "POST",
+        headers: notifHeaders,
+        body: JSON.stringify({
+          jsonrpc: "2.0",
+          method: "notifications/initialized"
+        }),
+        signal: AbortSignal.timeout(2000)
+      });
+
+      const shortSid = mcpSessionId ? mcpSessionId.slice(0, 8) : "active";
+      statusEl.innerHTML = `<span class="pulse-dot"></span> Live MCP Session (${shortSid}…)`;
       statusEl.style.color = "var(--accent-green)";
       initEventSource();
-      loadRegisteredTools();
+      await loadRegisteredToolsViaMcp();
       return;
     }
   } catch (e) {
-    console.log("Live backend not detected on current origin, engaging Cloud Demo Mode");
+    console.log("Live MCP server not reachable on current origin; switching to Offline Replay Mode:", e);
   }
 
-  // Cloud Demo Mode (e.g. running on GitHub Pages)
-  isCloudDemoMode = true;
-  statusEl.innerHTML = '<span class="pulse-dot" style="background:#10b981;"></span> Cloud Simulator (Spec 2025-11-25)';
-  statusEl.style.color = "var(--accent-green)";
-  loadRegisteredTools();
+  // Transparent Offline Replay Mode (e.g. when viewing static S3 build without a local server)
+  isOfflineReplayMode = true;
+  mcpSessionId = null;
+  statusEl.innerHTML = '<span class="pulse-dot" style="background:var(--amazon-amber);box-shadow:0 0 8px var(--amazon-amber);"></span> Offline Replay (No MCP Server Connected)';
+  statusEl.style.color = "var(--amazon-amber)";
+  loadRegisteredToolsViaMcp();
+}
+
+/**
+ * Invokes any registered tool on the MCP server over POST /mcp using JSON-RPC 2.0 `tools/call`.
+ * Automatically passes `mcp-session-id` negotiated during `initialize`.
+ */
+async function callMcpTool(toolName, toolArgs = {}, timeoutMs = 4500) {
+  if (isOfflineReplayMode) {
+    throw new Error("Offline Replay Mode active (no MCP server connected)");
+  }
+  if (!mcpSessionId) {
+    await initMcpStreamableClient();
+  }
+  const headers = {
+    "Content-Type": "application/json",
+    "Accept": "application/json, text/event-stream"
+  };
+  if (mcpSessionId) {
+    headers["mcp-session-id"] = mcpSessionId;
+  }
+
+  const res = await fetch(`${API_BASE}/mcp`, {
+    method: "POST",
+    headers,
+    body: JSON.stringify({
+      jsonrpc: "2.0",
+      id: jsonRpcIdCounter++,
+      method: "tools/call",
+      params: {
+        name: toolName,
+        arguments: toolArgs
+      }
+    }),
+    signal: AbortSignal.timeout(timeoutMs)
+  });
+
+  if (!res.ok) {
+    throw new Error(`MCP tools/call HTTP ${res.status}`);
+  }
+
+  const rawText = await res.text();
+  const rpcObj = parseMcpResponseBody(rawText);
+  if (!rpcObj || !rpcObj.result || !rpcObj.result.content || !rpcObj.result.content.length) {
+    throw new Error("Invalid MCP tools/call JSON-RPC response");
+  }
+  const textContent = rpcObj.result.content[0].text;
+  return JSON.parse(textContent);
 }
 
 function promptCustomEndpoint() {
   const current = localStorage.getItem("genius_api_base") || API_BASE;
-  const next = window.prompt("Enter GENIUS MCP Server Base URL (e.g. http://localhost:8000 or https://your-cloud-domain.com):", current);
+  const next = window.prompt("Enter GENIUS MCP Server Base URL (e.g. http://127.0.0.1:8000):", current);
   if (next !== null && next.trim() !== "") {
     localStorage.setItem("genius_api_base", next.trim());
     API_BASE = next.trim();
@@ -72,7 +198,6 @@ function promptCustomEndpoint() {
  */
 function initEventSource() {
   const statusEl = document.getElementById("server-status");
-  
   if (activeEventSource) {
     activeEventSource.close();
   }
@@ -80,7 +205,8 @@ function initEventSource() {
   activeEventSource = new EventSource(`${API_BASE}/events`);
 
   activeEventSource.onopen = () => {
-    statusEl.innerHTML = '<span class="pulse-dot"></span> Live MCP Server';
+    const shortSid = mcpSessionId ? mcpSessionId.slice(0, 8) : "active";
+    statusEl.innerHTML = `<span class="pulse-dot"></span> Live MCP Session (${shortSid}…)`;
     statusEl.style.color = "var(--accent-green)";
   };
 
@@ -95,9 +221,7 @@ function initEventSource() {
   };
 
   activeEventSource.onerror = (err) => {
-    console.warn("SSE connection interrupted, using Cloud Simulator fallback...", err);
-    statusEl.innerHTML = '<span class="pulse-dot" style="background:#10b981;"></span> Cloud Simulator Mode';
-    statusEl.style.color = "var(--accent-green)";
+    console.warn("SSE connection interrupted:", err);
   };
 }
 
@@ -106,12 +230,10 @@ function initEventSource() {
  */
 function handleServerEvent(event) {
   if (event.type === "genius.connected") {
-    console.log("Handshake verified with server.");
     return;
   }
 
   if (event.type === "genius.event" || event.type === "acoustic_detection") {
-    // Show unprompted proactive banner
     const banner = document.getElementById("proactive-banner");
     document.getElementById("banner-title").textContent = event.title || event.card_title || "Home Notice";
     document.getElementById("banner-message").textContent = event.message || event.card_body || "";
@@ -119,7 +241,6 @@ function handleServerEvent(event) {
 
     currentProposalId = event.proposal_id || null;
 
-    // Render action buttons
     const actionsContainer = document.getElementById("banner-actions");
     actionsContainer.innerHTML = "";
     if (event.actions && event.actions.length > 0) {
@@ -133,8 +254,6 @@ function handleServerEvent(event) {
     }
 
     banner.classList.remove("hidden");
-
-    // Speech synthesis (neural or browser fallback)
     speakMessage(event.spoken_text || event.message);
   }
 }
@@ -144,11 +263,8 @@ function handleServerEvent(event) {
  */
 function speakMessage(text) {
   if (!text) return;
-  
-  // Try real Amazon Polly Neural audio endpoint first
   const audio = new Audio(`${API_BASE}/api/polly/speak?text=${encodeURIComponent(text)}`);
-  audio.play().catch(err => {
-    // Fall back to Web Speech API
+  audio.play().catch(() => {
     if ("speechSynthesis" in window) {
       window.speechSynthesis.cancel();
       const utterance = new SpeechSynthesisUtterance(text);
@@ -160,24 +276,42 @@ function speakMessage(text) {
 }
 
 /**
- * 4. Load & Display Registered MCP Tools
+ * 4. Load & Display Registered MCP Tools via JSON-RPC `tools/list` on POST /mcp
  */
-async function loadRegisteredTools() {
+async function loadRegisteredToolsViaMcp() {
   const container = document.getElementById("tools-list-container");
   container.innerHTML = "";
 
-  try {
-    const res = await fetch(`${API_BASE}/api/tools`, { signal: AbortSignal.timeout(2000) });
-    if (res.ok) {
-      const data = await res.json();
-      data.tools.forEach(tool => renderToolCard(container, tool));
-      return;
+  if (!isOfflineReplayMode && mcpSessionId) {
+    try {
+      const res = await fetch(`${API_BASE}/mcp`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Accept": "application/json, text/event-stream",
+          "mcp-session-id": mcpSessionId
+        },
+        body: JSON.stringify({
+          jsonrpc: "2.0",
+          id: jsonRpcIdCounter++,
+          method: "tools/list",
+          params: {}
+        }),
+        signal: AbortSignal.timeout(2000)
+      });
+      if (res.ok) {
+        const rawText = await res.text();
+        const rpcObj = parseMcpResponseBody(rawText);
+        if (rpcObj && rpcObj.result && rpcObj.result.tools) {
+          rpcObj.result.tools.forEach(tool => renderToolCard(container, tool));
+          return;
+        }
+      }
+    } catch (err) {
+      console.log("Falling back to static tool list:", err);
     }
-  } catch (err) {
-    console.log("Using cached MCP tool catalog for simulator mode");
   }
 
-  // Fallback to static catalog in Cloud Demo Mode
   FALLBACK_TOOLS.forEach(tool => renderToolCard(container, tool));
 }
 
@@ -192,163 +326,216 @@ function renderToolCard(container, tool) {
 }
 
 /**
- * 5. Interactive Demo Flows
+ * 5. Interactive Demo Flows (All wired to POST /mcp JSON-RPC 2.0 `tools/call`)
  */
 
-// A. Simulate 3:14 AM Chirp Detection
+// A1. Voice-Native Conversational Diagnosis (`diagnose_from_description` over POST /mcp)
 async function simulateChirp() {
-  appendChatMessage("user", "Alexa, what's that sound?");
-  
-  // Try calling backend endpoint if available
+  appendChatMessage(
+    "user",
+    "Alexa, something in the hallway is beeping once every 30 seconds — a single high-pitched chirp from our Kidde alarm."
+  );
+
+  let diag = null;
+  let replayBadge = "";
   try {
-    await fetch(`${API_BASE}/simulate/chirp`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ interval_s: 30.0, location: "hallway" }),
-      signal: AbortSignal.timeout(3000)
+    diag = await callMcpTool("diagnose_from_description", {
+      interval_s: 30.0,
+      chirps_per_burst: 1,
+      brand: "Kidde",
+      location: "hallway"
     });
   } catch (err) {
-    console.log("Simulating chirp response client-side");
+    console.log("Offline replay fallback for diagnose_from_description:", err);
+    replayBadge = `<span style="color:var(--amazon-amber);font-size:0.72rem;">[OFFLINE REPLAY]</span> `;
+    diag = {
+      matched: true,
+      entity_id: "ent_co_detector_hallway",
+      device_class: "co_detector",
+      brand: "Kidde",
+      location: "hallway",
+      meaning: "end_of_life",
+      severity: "critical",
+      confidence: 0.99,
+      source_citation: "https://www.kidde.com/home-safety/en/us/support/help-center/browse-articles/articles/what-to-do-if-your-carbon-monoxide-alarm-is-beeping/",
+      spoken_summary: "Based on a chirp every 30 seconds, that's your hallway Kidde co detector indicating end of life. This means the chemical sensor has expired after its service lifetime—not a low battery. I have prepared a replacement order proposal for your review.",
+      proposal: {
+        proposal_id: "prop_co_detector_end_of_l_offline",
+        title: "Order Replacement Unit ($34.99)",
+        cost_usd: 34.99,
+        status: "staged_pending_user_confirmation"
+      }
+    };
   }
 
-  const responseText = "That's your hallway Carbon Monoxide detector's end-of-life chirp — not a low battery. The sensor expired after 7 years. I have prepared a replacement order proposal for your review.";
-  
-  appendChatMessage("assistant", responseText, `
+  const confPct = Math.round((diag.confidence || 0.95) * 100);
+  const propId = (diag.proposal && (diag.proposal.proposal_id || diag.proposal.id)) || "prop_replace_co_001";
+  const propTitle = (diag.proposal && diag.proposal.title) || "Confirm Replacement ($34.99)";
+  currentProposalId = propId;
+
+  appendChatMessage("assistant", diag.spoken_summary, `
     <div class="evidence-card">
       <div class="evidence-header">
-        <span>Acoustic Evidence Card</span>
-        <span style="color: var(--accent-green); font-size: 0.8rem;">98% Confidence Match</span>
+        <span>${replayBadge}MCP Tool: <code>diagnose_from_description</code></span>
+        <span style="color: var(--accent-green); font-size: 0.8rem;">${confPct}% Confidence · ${diag.severity.toUpperCase()}</span>
       </div>
       <div class="evidence-grid">
         <div class="evidence-metric">
           <div class="metric-val">30.0s</div>
-          <div class="metric-lbl">Chirp Interval</div>
+          <div class="metric-lbl">Spoken Cadence</div>
         </div>
         <div class="evidence-metric">
-          <div class="metric-val">3.2 kHz</div>
-          <div class="metric-lbl">Peak Frequency</div>
+          <div class="metric-val">${diag.brand}</div>
+          <div class="metric-lbl">Matched Brand</div>
         </div>
         <div class="evidence-metric">
-          <div class="metric-val">80 ms</div>
-          <div class="metric-lbl">Pulse Width</div>
+          <div class="metric-val">${diag.meaning.replace(/_/g, " ").toUpperCase()}</div>
+          <div class="metric-lbl">Failure Mode</div>
         </div>
       </div>
-      <div class="evidence-waveform" title="Detected Chirp Spectral Pulse Profile"></div>
-      <div style="font-size: 0.75rem; color: var(--text-muted); display: flex; justify-content: space-between;">
-        <span>Source: Kidde KN-COPP-3 Manual §4.2</span>
-        <span>Raw Audio: Discarded Ephemeral</span>
+      <div style="font-size: 0.75rem; color: var(--text-muted); display: flex; justify-content: space-between; margin-top: 6px;">
+        <span>Citation: <a href="${diag.source_citation}" target="_blank" style="color:var(--alexa-cyan);">Manufacturer Manual</a></span>
+        <span>Proposal ID: <code>${propId}</code></span>
       </div>
       <div style="margin-top: 12px; display: flex; gap: 8px;">
-        <button class="btn btn-primary" style="font-size: 0.78rem; padding: 6px 12px;" onclick="confirmActionDirect('prop_replace_co_001')">Confirm Replacement ($34.99)</button>
+        <button class="btn btn-primary" style="font-size: 0.78rem; padding: 6px 12px;" onclick="confirmActionDirect('${propId}')">${propTitle}</button>
         <button class="btn btn-ghost" style="font-size: 0.78rem; padding: 6px 12px;" onclick="dismissBanner()">Dismiss</button>
       </div>
     </div>
   `);
 
-  speakMessage(responseText);
+  speakMessage(diag.spoken_summary);
 }
 
-// A2. Simulate Verified Physical Recording Detection
+// A2. Companion Sensor Physical Chirp DSP (`hear_sound` -> `diagnose` over POST /mcp)
 async function simulateRealChirp() {
-  appendChatMessage("user", "Alexa, I hear a physical chirp in the upstairs hallway.");
-  
-  // Play the real physical audio recording through speaker
+  appendChatMessage(
+    "user",
+    "Companion Sensor Intake: Analyze physical piezo recording (real_smoke_detector_chirp_819808.wav) with user-reported 30s cadence."
+  );
+
   const clipUrl = `${API_BASE}/clips/real_smoke_detector_chirp_819808.wav`;
-  const chirpAudio = new Audio(clipUrl);
-  chirpAudio.play().catch(e => {
-    // If relative path fails, try relative fallback
-    new Audio("clips/real_smoke_detector_chirp_819808.wav").play().catch(err => console.log("Audio autoplay prevented:", err));
+  new Audio(clipUrl).play().catch(() => {
+    new Audio("clips/real_smoke_detector_chirp_819808.wav").play().catch(() => {});
   });
 
+  let hsData = null;
+  let diagData = null;
+  let replayBadge = "";
+
   try {
-    await fetch(`${API_BASE}/simulate/real_chirp`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      signal: AbortSignal.timeout(3000)
+    // 1. Call `hear_sound` over POST /mcp to extract actual Hilbert/FFT features from WAV
+    hsData = await callMcpTool("hear_sound", {
+      clip_path: "tests/clips/real_smoke_detector_chirp_819808.wav",
+      location: "hallway"
+    });
+    const measuredFreq = hsData.features.peak_frequency_hz;
+    const measuredDur = hsData.features.pulse_duration_ms;
+
+    // 2. Pass the live extracted features from `hear_sound` into `diagnose` over POST /mcp
+    diagData = await callMcpTool("diagnose", {
+      interval_s: 30.0,
+      peak_freq_hz: measuredFreq,
+      duration_ms: measuredDur,
+      location: "hallway",
+      clip_id: hsData.clip_id
     });
   } catch (err) {
-    console.log("Simulating physical chirp response client-side");
+    console.log("Offline replay fallback for hear_sound + diagnose:", err);
+    replayBadge = `<span style="color:var(--amazon-amber);font-size:0.72rem;">[OFFLINE REPLAY]</span> `;
+    hsData = {
+      clip_id: "real_smoke_detector_chirp_819808.wav",
+      features: { peak_frequency_hz: 3368.1, pulse_duration_ms: 101.5, interval_s: 0.0 },
+      privacy_attestation: { raw_audio_persisted: false, retention_policy: "discard_immediately_in_flight" }
+    };
+    diagData = {
+      brand: "Kidde",
+      device_class: "smoke_detector",
+      meaning: "low_battery",
+      confidence: 0.99,
+      spoken_summary: "That's your Kidde Smoke Detector in your hallway signaling a low battery with a 30-second chirp. I can guide you through replacing the battery when you're ready.",
+      proposal: { id: "prop_smoke_detector_low_batt_offline", title: "Order 9V Batteries / Walkthrough" },
+      source_provenance: "manufacturer_manual:https://www.kidde.com/home-safety/en/us/support/"
+    };
   }
 
-  const responseText = "That's your Kidde Smoke Detector in your hallway signaling a low battery with a 30-second chirp. I can guide you through replacing the battery when you're ready.";
-  
-  appendChatMessage("assistant", responseText, `
+  const freqVal = hsData.features.peak_frequency_hz.toFixed(1);
+  const durVal = hsData.features.pulse_duration_ms.toFixed(1);
+  const confPct = Math.round((diagData.confidence || 0.99) * 100);
+  const propId = (diagData.proposal && diagData.proposal.id) || "prop_smoke_low_batt";
+  const propTitle = (diagData.proposal && diagData.proposal.title) || "Order 9V Battery ($8.99)";
+  currentProposalId = propId;
+
+  appendChatMessage("assistant", diagData.spoken_summary, `
     <div class="evidence-card" style="border-left: 4px solid #10b981;">
       <div class="evidence-header">
-        <span style="font-weight: 700; color: #10b981;">Physical Acoustic Verification</span>
-        <span style="color: #10b981; font-size: 0.8rem; font-weight: 600;">99% Physical Match (Bloofrzo CC0)</span>
+        <span style="font-weight: 700; color: #10b981;">${replayBadge}MCP Pipeline: <code>hear_sound</code> → <code>diagnose</code></span>
+        <span style="color: #10b981; font-size: 0.8rem; font-weight: 600;">${confPct}% Match (${diagData.brand} ${diagData.device_class.replace(/_/g, " ")})</span>
       </div>
       <div class="evidence-grid">
         <div class="evidence-metric">
           <div class="metric-val">30.0s</div>
-          <div class="metric-lbl">Digital Cadence</div>
+          <div class="metric-lbl">User-Reported Cadence</div>
         </div>
         <div class="evidence-metric">
-          <div class="metric-val">3,368 Hz</div>
-          <div class="metric-lbl">Measured Resonant Peak</div>
+          <div class="metric-val">${freqVal} Hz</div>
+          <div class="metric-lbl">Measured FFT Peak</div>
         </div>
         <div class="evidence-metric">
-          <div class="metric-val">101.5 ms</div>
-          <div class="metric-lbl">Pulse Width</div>
+          <div class="metric-val">${durVal} ms</div>
+          <div class="metric-lbl">Measured Hilbert Width</div>
         </div>
         <div class="evidence-metric">
-          <div class="metric-val">Low Battery</div>
-          <div class="metric-lbl">Verified Diagnosis</div>
+          <div class="metric-val">${diagData.meaning.replace(/_/g, " ")}</div>
+          <div class="metric-lbl">Diagnosed State</div>
         </div>
       </div>
       <div class="evidence-waveform" style="background: linear-gradient(90deg, #059669 0%, #10b981 100%);"></div>
       <div style="font-size: 0.75rem; color: var(--text-muted); display: flex; justify-content: space-between; margin-top: 6px;">
-        <span>Hardware: Piezo Transducer (Bloofrzo CC0)</span>
-        <span>Band: ±350 Hz Calibrated</span>
+        <span>Clip: <code>${hsData.clip_id}</code> (1.0s CC0 sample)</span>
+        <span>Persisted Audio: <code>${hsData.privacy_attestation.raw_audio_persisted ? "YES" : "0 Bytes (RAM Zeroed)"}</code></span>
       </div>
       <div style="margin-top: 12px; display: flex; gap: 8px;">
-        <button class="btn btn-primary" style="font-size: 0.78rem; padding: 6px 12px;" onclick="confirmActionDirect('prop_smoke_detector_low_batt_916974')">Order 9V Battery ($8.99)</button>
+        <button class="btn btn-primary" style="font-size: 0.78rem; padding: 6px 12px;" onclick="confirmActionDirect('${propId}')">${propTitle}</button>
         <button class="btn btn-ghost" style="font-size: 0.78rem; padding: 6px 12px;" onclick="dismissBanner()">Dismiss</button>
       </div>
     </div>
   `);
 
-  speakMessage(responseText);
+  speakMessage(diagData.spoken_summary);
 }
 
-// B. Home Health Scorecard
+// B. Home Health Scorecard (`get_home_health` over POST /mcp)
 async function fetchHomeHealth() {
   appendChatMessage("user", "Alexa, how healthy is my home?");
 
   let healthScore = 85;
   let summary = "1 critical device reached end-of-life; 1 aging system. Attention required.";
   let total = 7, healthy = 5, aging = 1, eol = 1, fleetRel = 88.5;
+  let replayBadge = "";
 
   try {
-    const res = await fetch(`${API_BASE}/api/call`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name: "get_home_health", arguments: {} }),
-      signal: AbortSignal.timeout(3000)
-    });
-    if (res.ok) {
-      const data = await res.json();
-      const payload = data.result[0];
-      healthScore = payload.health_score;
-      summary = payload.summary;
-      total = payload.metrics.total_monitored_devices;
-      healthy = payload.metrics.healthy_count;
-      aging = payload.metrics.aging_count;
-      eol = payload.metrics.end_of_life_count;
-      if (payload.continuous_reliability) {
-        fleetRel = payload.continuous_reliability.fleet_reliability_pct;
-      }
+    const payload = await callMcpTool("get_home_health", {});
+    healthScore = payload.health_score;
+    summary = payload.summary;
+    total = payload.metrics.total_monitored_devices;
+    healthy = payload.metrics.healthy_count;
+    aging = payload.metrics.aging_count;
+    eol = payload.metrics.end_of_life_count;
+    if (payload.continuous_reliability) {
+      fleetRel = payload.continuous_reliability.fleet_reliability_pct;
     }
   } catch (err) {
-    console.log("Using cached health scorecard for simulator mode");
+    console.log("Offline replay fallback for get_home_health:", err);
+    replayBadge = `<span style="color:var(--amazon-amber);font-size:0.72rem;">[OFFLINE REPLAY]</span> `;
   }
 
   const responseText = `Your Home Health Score is ${healthScore}/100. ${summary}`;
-  
+
   appendChatMessage("assistant", responseText, `
     <div class="evidence-card">
       <div class="evidence-header">
-        <span>Home Health Scorecard</span>
+        <span>${replayBadge}MCP Tool: <code>get_home_health</code></span>
         <span style="color: var(--amazon-amber); font-weight: 700; font-size: 0.95rem;">Score: ${healthScore}/100</span>
       </div>
       <div class="evidence-grid" style="grid-template-columns: repeat(4, 1fr);">
@@ -379,16 +566,17 @@ async function fetchHomeHealth() {
   speakMessage(responseText);
 }
 
-// C. Simulate Proactive Delivery Follow-Up (Unprompted Push)
+// C. Simulate Proactive Delivery Follow-Up (Unprompted SSE Push)
 async function simulateDelivery() {
   try {
-    await fetch(`${API_BASE}/simulate/delivery`, { method: "POST", signal: AbortSignal.timeout(3000) });
+    const res = await fetch(`${API_BASE}/simulate/delivery`, { method: "POST", signal: AbortSignal.timeout(3000) });
+    if (!res.ok) throw new Error("Delivery endpoint returned non-200");
   } catch (err) {
-    console.log("Simulating delivery event client-side");
+    console.log("Offline replay fallback for delivery event");
     handleServerEvent({
       type: "genius.event",
       kind: "follow_up",
-      title: "Replacement Delivery Arrived",
+      title: "[Offline Replay] Replacement Delivery Arrived",
       message: "Your Kidde CO detector replacement arrived today. Is the hallway unit still chirping?",
       spoken_text: "Your replacement carbon monoxide alarm just arrived on your front porch. Would you like me to walk you through replacing the hallway unit?",
       actions: [
@@ -402,13 +590,14 @@ async function simulateDelivery() {
 // C2. Simulate Proactive Freeze Alert
 async function simulateFreeze() {
   try {
-    await fetch(`${API_BASE}/simulate/freeze?temp_f=24.0`, { method: "POST", signal: AbortSignal.timeout(3000) });
+    const res = await fetch(`${API_BASE}/simulate/freeze?temp_f=24.0`, { method: "POST", signal: AbortSignal.timeout(3000) });
+    if (!res.ok) throw new Error("Freeze endpoint returned non-200");
   } catch (err) {
-    console.log("Simulating freeze warning client-side");
+    console.log("Offline replay fallback for freeze warning");
     handleServerEvent({
       type: "genius.event",
       kind: "freeze_risk",
-      title: "Freeze Warning · Aging Heating System",
+      title: "[Offline Replay] Freeze Warning · Aging Heating System",
       message: "Temperature dropping to 24°F tonight. Your Carrier furnace is aging (manufactured 2015). Simulation projects pipe freeze risk within 27.3h if unmitigated. Maintain thermostat at 68°F.",
       spoken_text: "A freeze alert is in effect with temperatures dropping to 24 degrees. Because your basement furnace is aging, I recommend keeping your heat set to at least 68 degrees tonight.",
       actions: [
@@ -419,23 +608,39 @@ async function simulateFreeze() {
   }
 }
 
-// D. Confirm Action (Propose -> Confirm Gate)
+// D. Confirm Action (`confirm_action` over POST /mcp)
 async function confirmActionDirect(proposalId) {
+  let confData = null;
+  let replayBadge = "";
   try {
-    await fetch(`${API_BASE}/api/call`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        name: "confirm_action",
-        arguments: { proposal_id: proposalId, confirmed: true }
-      }),
-      signal: AbortSignal.timeout(3000)
+    confData = await callMcpTool("confirm_action", {
+      proposal_id: proposalId,
+      confirmed: true
     });
   } catch (err) {
-    console.log("Confirming proposal client-side");
+    console.log("Offline replay fallback for confirm_action:", err);
+    replayBadge = "[OFFLINE REPLAY] ";
+    confData = {
+      proposal_id: proposalId,
+      status: "confirmed_and_executed",
+      timestamp: new Date().toISOString(),
+      result: {
+        order_ref: `AMZN-2026-94819-${proposalId.slice(-6).toUpperCase()}`,
+        item: "Replacement Hardware Unit",
+        estimated_delivery: "Today by 6:00 PM (Simulated Fulfillment)"
+      },
+      message: `Action confirmed for ${proposalId}.`
+    };
   }
 
-  appendChatMessage("assistant", `Action Confirmed: Replacement Kidde unit ordered (Ref: AMZN-2026-94819). Estimated arrival: Today by 8:00 PM. Proactive follow-up scheduled.`);
+  const orderRef = (confData.result && confData.result.order_ref) || "AMZN-2026-94819";
+  const itemDesc = (confData.result && confData.result.item) || "Replacement Unit";
+  const eta = (confData.result && confData.result.estimated_delivery) || "Today by 6:00 PM";
+
+  appendChatMessage(
+    "assistant",
+    `${replayBadge}MCP confirm_action (${confData.proposal_id}): ${itemDesc} staged (Order Ref: ${orderRef}, ETA: ${eta}). Proactive delivery follow-up armed in Home Graph.`
+  );
   dismissBanner();
 }
 
@@ -467,11 +672,11 @@ function dismissBanner() {
 }
 
 /**
- * 7. Warranties & Claims
+ * 7. Warranties & Claims (`check_warranty` / `file_warranty_claim` over POST /mcp)
  */
 async function checkWarranties() {
   appendChatMessage("user", "Alexa, what warranties do I have on my equipment?");
-  
+
   const sampleWarranties = [
     { entity_id: "ent_furnace_basement", brand: "Carrier", model: "Infinity 98", location: "basement", end_date: "2025-10-15", provider: "Carrier 10-Yr Limited" },
     { entity_id: "ent_water_heater_utility", brand: "Rheem", model: "Performance Platinum", location: "utility_room", end_date: "2036-09-01", provider: "Rheem Tank Warranty" },
@@ -486,7 +691,7 @@ async function checkWarranties() {
       if (data.warranties && data.warranties.length > 0) list = data.warranties;
     }
   } catch (err) {
-    console.log("Using cached warranties for simulator mode");
+    console.log("Using cached warranties for offline replay mode");
   }
 
   let itemsHtml = "";
@@ -519,12 +724,20 @@ async function checkWarranties() {
 }
 
 async function fileWarrantyClaimDirect(entityId) {
-  appendChatMessage("assistant", `Warranty Claim Created: Proposal prop_claim_${entityId.slice(-6)} prepared for manufacturer. Free replacement unit authorized under warranty coverage.`);
-  speakMessage(`Warranty claim dossier prepared for manufacturer.`);
+  try {
+    const claimRes = await callMcpTool("file_warranty_claim", {
+      entity_id: entityId,
+      failure_description: "Failed component under active warranty policy"
+    });
+    appendChatMessage("assistant", `MCP file_warranty_claim: Claim ${claimRes.claim_id || entityId} staged for ${claimRes.brand || "Manufacturer"}.`);
+  } catch (err) {
+    appendChatMessage("assistant", `[OFFLINE REPLAY] Warranty Claim Created: Proposal prop_claim_${entityId.slice(-6)} prepared for manufacturer.`);
+  }
+  speakMessage("Warranty claim dossier prepared for manufacturer.");
 }
 
 /**
- * 8. AWS Builder Specialist Deliberation Panel (Repair vs. Replace)
+ * 8. AWS Builder Specialist Deliberation Panel (`deliberate_repair` over POST /mcp)
  */
 async function runDeliberation() {
   appendChatMessage("user", "Alexa, should I repair or replace my basement furnace?");
@@ -532,51 +745,51 @@ async function runDeliberation() {
   let verdict = "REPLACE";
   let spoken = "Considering the aging state of your Carrier furnace, while the repair estimate is $2,200, replacing with a modern ENERGY STAR heat pump yields $300 in annual energy savings, paying for itself over time. I recommend replacement.";
   let modelUsed = "bedrock:amazon.nova-pro-v1:0";
-  let mode = "live_amazon_bedrock";
+  let mode = "offline_replay_fallback";
+  let repairCost = 2200;
+  let replaceCost = 4500;
+  let annualSavings = 300;
 
   try {
-    const res = await fetch(`${API_BASE}/api/call`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        name: "deliberate_repair",
-        arguments: { entity_id: "ent_furnace_basement", issue_description: "Heat exchanger cracked, repair quote $2200", repair_estimate: 2200.0 }
-      }),
-      signal: AbortSignal.timeout(5000)
-    });
-    if (res.ok) {
-      const data = await res.json();
-      const delibData = data.result[0];
-      const d = delibData.deliberation;
-      verdict = d.verdict;
-      spoken = d.spoken_deliberation || d.rationale;
-      modelUsed = delibData.model_used;
-      mode = delibData.execution_mode;
+    const delibData = await callMcpTool("deliberate_repair", {
+      entity_id: "ent_furnace_basement",
+      issue_description: "Heat exchanger cracked, repair quote $2200",
+      repair_estimate: 2200.0
+    }, 8000);
+    const d = delibData.deliberation;
+    verdict = d.verdict;
+    spoken = d.spoken_deliberation || d.rationale;
+    modelUsed = delibData.model_used;
+    mode = delibData.execution_mode;
+    if (d.financial_analysis) {
+      repairCost = d.financial_analysis.repair_estimate_usd || 2200;
+      replaceCost = d.financial_analysis.replacement_estimate_usd || 4500;
+      annualSavings = d.financial_analysis.estimated_annual_energy_savings_usd || 300;
     }
   } catch (err) {
-    console.log("Using cached Bedrock deliberation for simulator mode");
+    console.log("Using offline replay fallback for Bedrock deliberation:", err);
   }
 
   appendChatMessage("assistant", spoken, `
     <div class="evidence-card" style="border-color: var(--amazon-amber);">
       <div class="evidence-header">
-        <span>Amazon Bedrock Nova Pro Specialist Deliberation</span>
+        <span>MCP Tool: <code>deliberate_repair</code> (Amazon Bedrock)</span>
         <span style="color: var(--accent-red); font-weight: 700;">VERDICT: ${verdict}</span>
       </div>
       <div style="font-size: 0.78rem; color: var(--text-muted); margin-bottom: 8px;">
-        Model: <code>${modelUsed}</code> (${mode})
+        Model: <code>${modelUsed}</code> · Mode: <code>${mode}</code>
       </div>
       <div class="evidence-grid" style="grid-template-columns: repeat(3, 1fr);">
         <div class="evidence-metric">
-          <div class="metric-val">$2,200</div>
+          <div class="metric-val">$${repairCost.toLocaleString()}</div>
           <div class="metric-lbl">Repair Estimate</div>
         </div>
         <div class="evidence-metric">
-          <div class="metric-val">$4,500</div>
+          <div class="metric-val">$${replaceCost.toLocaleString()}</div>
           <div class="metric-lbl">Replacement Cost</div>
         </div>
         <div class="evidence-metric">
-          <div class="metric-val" style="color: var(--accent-green);">$300/yr</div>
+          <div class="metric-val" style="color: var(--accent-green);">$${annualSavings}/yr</div>
           <div class="metric-lbl">SEER Savings</div>
         </div>
       </div>
@@ -589,21 +802,43 @@ async function runDeliberation() {
   speakMessage(spoken);
 }
 
-// E. Add Device (Tag Scan OCR Simulation)
+// E. Add Device (`register_entity` over POST /mcp)
 async function registerNewDeviceDemo() {
   appendChatMessage("user", "Alexa, scan this water heater tag");
 
-  appendChatMessage("assistant", `Added Rheem Performance Platinum 50-Gal in your utility_room. Lifecycle is HEALTHY. 12-year manufacturer warranty registered until 2036-09-01.`, `
+  let regData = null;
+  try {
+    regData = await callMcpTool("register_entity", {
+      entity_type: "water_heater",
+      brand: "Rheem",
+      model: "Performance Platinum 50-Gal",
+      location: "utility_room",
+      manufacture_year: 2024,
+      warranty_years: 12
+    });
+  } catch (err) {
+    regData = {
+      brand: "Rheem",
+      model: "Performance Platinum 50-Gal",
+      location: "utility_room",
+      manufacture_year: 2024,
+      lifecycle_state: "healthy",
+      warranty_end_date: "2036-09-01",
+      provenance: "photo_inspection:tag_scan"
+    };
+  }
+
+  appendChatMessage("assistant", `Added ${regData.brand || "Rheem"} ${regData.model || "Performance Platinum 50-Gal"} in your ${regData.location || "utility_room"}. Lifecycle is HEALTHY. 12-year manufacturer warranty registered.`, `
     <div class="evidence-card" style="border-color: var(--accent-green);">
       <div class="evidence-header">
-        <span>Day 0 Device Onboarding · Tag OCR</span>
+        <span>MCP Tool: <code>register_entity</code> · Tag OCR</span>
         <span style="color: var(--accent-green); font-size: 0.75rem;">Verified Provenance</span>
       </div>
       <div style="font-size: 0.82rem; color: var(--text-secondary); line-height: 1.4;">
-        <strong>Device:</strong> Rheem Performance Platinum 50-Gal<br>
-        <strong>Location:</strong> utility_room · <strong>Manufactured:</strong> 2024 (2 yrs old)<br>
-        <strong>Warranty:</strong> Rheem Tank Warranty (Active until 2036-09-01)<br>
-        <span style="font-size: 0.72rem; color: var(--alexa-cyan);">📍 Provenance: photo_inspection:tag_scan</span>
+        <strong>Device:</strong> ${regData.brand || "Rheem"} ${regData.model || "Performance Platinum 50-Gal"}<br>
+        <strong>Location:</strong> ${regData.location || "utility_room"} · <strong>Manufactured:</strong> ${regData.manufacture_year || 2024}<br>
+        <strong>Warranty:</strong> Rheem Tank Warranty (Active)<br>
+        <span style="font-size: 0.72rem; color: var(--alexa-cyan);">📍 Provenance: ${regData.provenance || "photo_inspection:tag_scan"}</span>
       </div>
     </div>
   `);
@@ -612,7 +847,7 @@ async function registerNewDeviceDemo() {
 }
 
 /**
- * 6. Privacy & Provenance Inspector
+ * 6. Privacy & Provenance Inspector (`list_entities` over POST /mcp)
  */
 async function openPrivacyInspector() {
   const drawer = document.getElementById("privacy-inspector");
@@ -628,18 +863,10 @@ async function openPrivacyInspector() {
 
     let entities = defaultEntities;
     try {
-      const res = await fetch(`${API_BASE}/api/call`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: "list_entities", arguments: {} }),
-        signal: AbortSignal.timeout(3000)
-      });
-      if (res.ok) {
-        const data = await res.json();
-        if (data.result && data.result[0].entities) entities = data.result[0].entities;
-      }
+      const data = await callMcpTool("list_entities", {});
+      if (data && data.entities) entities = data.entities;
     } catch (err) {
-      console.log("Using cached entities for privacy inspector");
+      console.log("Using cached entities for offline replay mode");
     }
 
     const container = document.getElementById("entities-container");
@@ -668,21 +895,18 @@ function toggleToolExplorer() {
   drawer.classList.toggle("hidden");
 }
 
-/**
- * Helper: Append chat message
- */
 function appendChatMessage(sender, text, extraHtml = "") {
   const thread = document.getElementById("chat-thread");
   const msg = document.createElement("div");
   msg.className = `message ${sender}-message`;
-  
+
   const senderLabel = sender === "user" ? "You" : "GENIUS (World Model)";
   msg.innerHTML = `
     <div class="message-sender">${senderLabel}</div>
     <div class="message-text">${text}</div>
     ${extraHtml}
   `;
-  
+
   thread.appendChild(msg);
   thread.scrollTop = thread.scrollHeight;
   const conv = document.querySelector(".conversation-container");
