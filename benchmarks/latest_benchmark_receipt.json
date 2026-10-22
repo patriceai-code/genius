@@ -1,11 +1,11 @@
 {
   "timestamp_utc": "2026-10-22T15:24:13.995506+00:00",
   "latency_budget_ms": {
-    "dsp_fft_hilbert_ms": 9.65,
-    "ephemeral_scrub_ms": 0.004,
+    "dsp_fft_hilbert_ms": 9.8,
+    "ephemeral_scrub_ms": 0.005,
     "beepdb_search_ms": 0.016,
-    "graph_sqlite_ms": 3.67,
-    "total_local_pipeline_ms": 13.34
+    "graph_sqlite_ms": 3.7,
+    "total_local_pipeline_ms": 13.52
   },
   "acoustic_validation": {
     "synthetic_cadence_correct": 19,
@@ -85,5 +85,5 @@
       "tau_35h": 24.6
     }
   },
-  "sha256_verification_hash": "e6b12ce7d9af0cf268c64f655f84cd0afae6dca5a9f5011f0fe4e6ff5234c75e"
+  "sha256_verification_hash": "07775d674138637b9d9fdd5835be61e3b012688ea8a832e5bf8bcbee3158a091"
 }

@@ -123,7 +123,7 @@ Run `python benchmarks/run_benchmarks.py` (writes receipt to [`benchmarks/latest
 | **Real Hardware Tone DSP Extraction** | **4/4 Verified** | Real PC POST beep, microwave beep, buzzer, and alarm recordings verified for accurate Hilbert pulse width and Hann FFT peak extraction. |
 | **ESC-50 Domestic Noise Smoke Test** | **6/6 Spec · 6/6 Peak** | `n=12` smoke test on 6 real ESC-50 domestic clips (washer, vacuum, water, knock, steps, clock): `6/6` standalone clips stay `< 0.50` confidence; `6/6` `+15 dB` chirp mixes recover the `3,368 Hz` peak via Hann FFT vs `1/6` for naive global zero-crossing. |
 | **Synthetic + ESC-50 Noise Bed** | **90.0% (9/10)** | 10 synthetic cadence clips mixed with real ESC-50 domestic room noise at **+15 dB** and **+6 dB SNR**. |
-| **Local DSP + Scrub + SQLite Pipeline** | **~13.5 ms** | `~9.80 ms` FFT/Hilbert + `0.005 ms` `data.fill(0.0)` + `0.016 ms` `beepdb` lookup + `~3.70 ms` SQLite write. |
+| **Local DSP + Scrub + SQLite Pipeline** | **13.52 ms** | `9.80 ms` FFT/Hilbert + `0.005 ms` `data.fill(0.0)` + `0.016 ms` `beepdb` lookup + `3.70 ms` SQLite write. |
 | **Automated Pytest Suite** | **22/22 Passing** | Includes `test_mcp_streamable_http_spec_handshake`, `test_simulator_mcp_client_and_cors_session_header`, and `test_audio_never_persisted_to_disk_or_db`. |
 
 ```powershell

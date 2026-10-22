@@ -30,23 +30,6 @@ logger = logging.getLogger("genius.server")
 mcp_server = MCPServer(CONFIG.server_name)
 register_all_tools(mcp_server)
 
-# In-memory SSE subscriber queues for the Device Simulator
-proactive_subscribers = set()
-
-
-async def broadcast_proactive_event(event_data: Dict[str, Any]):
-    """Broadcasts a proactive event to all connected simulator clients via SSE."""
-    dead_queues = set()
-    payload = f"data: {json.dumps(event_data)}\n\n"
-    for queue in list(proactive_subscribers):
-        try:
-            await queue.put(payload)
-        except Exception:
-            dead_queues.add(queue)
-    for dead in dead_queues:
-        proactive_subscribers.discard(dead)
-
-
 # Mount MCP Streamable HTTP Application under /mcp
 mcp_app = mcp_server.streamable_http_app(streamable_http_path="/mcp")
 
@@ -129,7 +112,7 @@ async def get_mcp_config():
 
 @app.get("/api/tools")
 async def list_registered_tools():
-    """Lists all 7 registered MCP tools and their parameter schemas."""
+    """Lists all 12 registered MCP tools and their parameter schemas."""
     tools = await mcp_server.list_tools()
     tool_list = []
     for t in tools:
