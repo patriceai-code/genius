@@ -222,7 +222,7 @@ def create_02_problem_card():
         (
             "$12,514 WATER CLAIMS",
             "Unheard Appliance & Leak Alerts",
-            ">$15B ANNUAL US LOSSES",
+            "$12,514 AVG RESIDENTIAL CLAIM",
             "Ignored dehumidifier, sump pump, and leak\nsensor chirps lead to catastrophic water\ndamage averaging $12,514 per residential\ninsurance claim.\n\nSource: Insurance Information Institute / ISO",
             AMAZON_AMBER,
         ),
@@ -506,7 +506,7 @@ def create_05_outro_business():
 
     draw.text(
         (960, 140),
-        "COMMERCIAL VIABILITY: 4 HIGH-MARGIN REVENUE ENGINES",
+        "COMMERCIAL VIABILITY: 4 REVENUE ENGINES (ILLUSTRATIVE)",
         font=get_font(FONT_BOLD, 42),
         fill=TEXT_WHITE,
         anchor="mm",
@@ -521,8 +521,8 @@ def create_05_outro_business():
 
     streams = [
         ("45%", "Prime Hardware & Consumables", "1-click verified replacement dispatch\n(Kidde CO $34.99, 9V packs, filters)\nHigh-urgency retail GMV capture", AMAZON_AMBER),
-        ("30%", "Insurance Carrier Telemetry", "Mitigates $15B+ freeze & flood claims\nSubsidized Alexa+ partnerships with\nState Farm, Nationwide, and Aviva", ALEXA_CYAN),
-        ("15%", "Alexa+ Subscription Retention", "The killer $9.99/mo differentiator:\nprevents $12,500 disasters & decodes\n3:14 AM panic chirps with certainty", EMERALD),
+        ("30%", "Insurance Carrier Telemetry", "Mitigates costly freeze & flood claims\nSubsidized Alexa+ partnerships with\nState Farm, Nationwide, and Aviva", ALEXA_CYAN),
+        ("15%", "Alexa+ Subscription Retention", "The killer $9.99/mo differentiator:\nprevents $12,514 disasters & decodes\n3:14 AM panic chirps with certainty", EMERALD),
         ("10%", "Warranty Claim Automation", "Auto-files manufacturer claim dossiers\nRecovers $300-$1,500 per appliance\nAuditable home provenance ledger", PURPLE),
     ]
 
