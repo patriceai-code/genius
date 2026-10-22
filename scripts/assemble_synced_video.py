@@ -2,7 +2,7 @@
 Assemble the synchronized GENIUS official demo video beat-by-beat using FFmpeg.
 Outputs:
   - demo_production/genius_official_demo.mp4
-  - C:/Users/zache/Videos/genius_official_demo.mp4
+  - ~/Videos/genius_official_demo.mp4
   - demo_production/verification_frames/*.jpg
 """
 import json
@@ -20,7 +20,7 @@ SYNCED_CLIPS_DIR.mkdir(parents=True, exist_ok=True)
 VERIFY_DIR.mkdir(parents=True, exist_ok=True)
 
 FINAL_OUTPUT = BASE_DIR / "demo_production" / "genius_official_demo.mp4"
-VIDEOS_FOLDER_OUTPUT = Path(r"C:\Users\zache\Videos\genius_official_demo.mp4")
+VIDEOS_FOLDER_OUTPUT = Path.home() / "Videos" / "genius_official_demo.mp4"
 
 
 def run_ffmpeg(cmd: list[str], desc: str = ""):
@@ -120,7 +120,7 @@ def assemble_all():
     ]
     run_ffmpeg(cmd_master, "Master video concatenation")
 
-    # Copy to C:\Users\zache\Videos\genius_official_demo.mp4
+    # Copy to ~/Videos/genius_official_demo.mp4
     try:
         VIDEOS_FOLDER_OUTPUT.parent.mkdir(parents=True, exist_ok=True)
         shutil.copyfile(FINAL_OUTPUT, VIDEOS_FOLDER_OUTPUT)

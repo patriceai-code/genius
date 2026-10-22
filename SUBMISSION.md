@@ -147,7 +147,7 @@ GENIUS transforms Alexa from a passive voice utility into an essential home infr
 - [x] Open Source Library Public: [github.com/patriceai-code/beepdb](https://github.com/patriceai-code/beepdb)
 - [x] Live AWS S3 Simulator Endpoint: [http://genius-simulator-115207986956.s3-website.eu-west-2.amazonaws.com](http://genius-simulator-115207986956.s3-website.eu-west-2.amazonaws.com)
 - [x] 22/22 Passing Test Suite across Python 3.11 & 3.12 CI
-- [x] Record a video under 3:00 (`demo_production/genius_official_demo.mp4` & `C:\Users\zache\Videos\genius_official_demo.mp4` — 2m 48s)
+- [x] Record a video under 3:00 (`demo_production/genius_official_demo.mp4` — 2m 48s)
 - [ ] Upload video to YouTube (Public or Unlisted) and paste URL into Devpost
 - [ ] Paste Section 2 into the Devpost "About the Project" box
 - [ ] Paste [FEEDBACK.md](FEEDBACK.md) into Devpost Feedback fields
