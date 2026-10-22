@@ -34,6 +34,6 @@ jobs:
         python -m pip install --upgrade pip
         pip install -r requirements.txt
 
-    - name: Run Pytest (13/13 Green Gates)
+    - name: Run Pytest (22/22 Passing Gates)
       run: |
         pytest -v tests/

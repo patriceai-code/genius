@@ -13,7 +13,7 @@
 **The Home World Model for the Alexa+ Era**  
 *Submitted to the Amazon Developer Hackathon 2026 (Primary Track: Alexa+ | Mini-Challenges: AWS Builder & Open Source)*
 
-[Live AWS Simulator](http://genius-simulator-115207986956.s3-website.eu-west-2.amazonaws.com) · [beepdb Open Source Library](https://github.com/patriceai-code/beepdb) · [Devpost Submission](DEVPOST_SUBMISSION_CLEAN.md) · [Technical Dossier](PROJECT_DOSSIER.md)
+[Live AWS Simulator](http://genius-simulator-115207986956.s3-website.eu-west-2.amazonaws.com) · [beepdb Open Source Library](https://github.com/patriceai-code/beepdb) · [Devpost Submission](DEVPOST_SUBMISSION_CLEAN.md)
 
 </div>
 

@@ -1,7 +1,7 @@
 """
 GENIUS MCP Server Main Entry Point
 Adheres to Model Context Protocol (MCP) 2025-11-25 Streamable HTTP Transport
-Provides FastMCP server, SSE proactive push, and companion simulator API.
+Provides MCPServer, SSE proactive push, and companion simulator API.
 """
 
 from contextlib import asynccontextmanager

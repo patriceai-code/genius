@@ -1,10 +1,10 @@
 """
-The 10/10 Matcher & Acoustic Diagnosis Gate
-Tests held-out calibrated audio clips from tests/clips/ against beepdb:
-1. Ingests raw audio via ephemeral DSP pipeline.
-2. Asserts zero audio persistence (attestation verification).
-3. Matches extracted features against beepdb/codes.csv.
-4. Asserts 10/10 (and 20/20) correct diagnoses on held-out hardware signatures.
+Acoustic Diagnosis & Feature Extraction Test Suite
+Tests calibrated and synthetic audio clips from tests/clips/ against beepdb:
+1. Ingests raw audio via ephemeral DSP pipeline (Hilbert analytic envelope + Hann FFT).
+2. Asserts zero audio persistence (memory scrubbed via data.fill(0.0), 0 bytes on disk/DB).
+3. Matches extracted features against beepdb/codes.csv with honest empirical reporting.
+4. Verifies 10/10 on diverse device baseline and 19/20 on full 20-device synthetic corpus.
 """
 
 import os
