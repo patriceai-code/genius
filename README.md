@@ -87,12 +87,12 @@
 
 ## 2. Signal Processing, Reliability Priors & Thermal Physics
 
-### A. Acoustic Feature Extraction (`audio/dsp.py`)
+### A. Acoustic Feature Extraction (`audio/features.py` & `audio/ephemeral.py`)
 1. **Analytic Signal Envelope (Hilbert Transform):** Computes $A(t) = |s(t) + i \cdot \mathcal{H}\{s(t)\}|$ to measure continuous pulse width ($\text{ms}$) across oscillating $3\text{ kHz}+$ piezo square waves without zero-crossing dropouts.
 2. **Spectral Peak Extraction (Hann-Windowed FFT):** Extracts dominant frequency $f_{\text{peak}}$ above $400\text{ Hz}$. Physical smoke detector piezo recordings (Bloofrzo CC0 `#819808` at $3,368.1\text{ Hz}$ and `#819807` at $3,122.3\text{ Hz}$ vs $3,200\text{ Hz}$ nominal manual spec) motivated our calibrated $\pm 350\text{ Hz}$ tolerance window in `beepdb`.
 3. **Zero Disk Persistence:** Raw audio is never written to disk, logs, or SQLite (verified by `test_audio_never_persisted_to_disk_or_db`), and in-memory PCM arrays are cleared best-effort via `data.fill(0.0)`.
 
-### B. Continuous Reliability Priors (`graph/reliability.py`)
+### B. Continuous Reliability Priors (`graph/store.py`)
 Equipment lifecycle degradation is modeled using two-parameter Weibull priors:
 
 $$R(t) = \exp\left(-\left(\frac{t}{\eta}\right)^\beta\right), \quad h(t) = \frac{\beta}{\eta} \left(\frac{t}{\eta}\right)^{\beta - 1}$$

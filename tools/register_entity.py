@@ -1,6 +1,6 @@
 """
 Tool: register_entity
-Day 0 hardware onboarding via manual entry or multimodal vision (Bedrock Claude 3.5).
+Day 0 hardware onboarding via manual entry or multimodal vision (Amazon Bedrock Nova Pro).
 Ingests appliance tags / serial plates, calculates lifecycle status, and records warranty coverage.
 """
 
