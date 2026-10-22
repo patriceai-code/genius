@@ -1,6 +1,6 @@
 """
 beepdb Ingestion Engine
-Extracts acoustic signatures and error beeps from hardware manuals using Amazon Bedrock (Claude 3.5),
+Extracts acoustic signatures and error beeps from hardware manuals using Amazon Bedrock (Nova Pro),
 with deterministic local heuristic fallback.
 """
 
@@ -12,6 +12,8 @@ from typing import Dict, Any, Optional
 import boto3
 from botocore.exceptions import BotoCoreError, ClientError
 from dotenv import load_dotenv
+
+from tools.utils import parse_json_from_llm
 
 load_dotenv()
 logger = logging.getLogger("genius.beepdb.ingest")
@@ -27,7 +29,7 @@ def get_bedrock_client():
 
 def extract_beep_signature_bedrock(manual_text: str, source_url: str = "") -> Optional[Dict[str, Any]]:
     """
-    Uses Amazon Bedrock (Anthropic Claude 3.5 Sonnet) to extract structured
+    Uses Amazon Bedrock (Amazon Nova Pro) to extract structured
     beep codes from unstructured hardware manuals.
     """
     prompt = f"""You are an acoustic engineering analyst extracting hardware diagnostic beep patterns.
@@ -56,14 +58,11 @@ Return ONLY valid JSON matching this schema:
 
     try:
         client = get_bedrock_client()
-        model_id = os.getenv("BEDROCK_MODEL_ID", "anthropic.claude-3-7-sonnet-20250219-v1:0")
+        model_id = os.getenv("BEDROCK_MODEL_ID", "amazon.nova-pro-v1:0")
 
-        
         body = json.dumps({
-            "anthropic_version": "bedrock-2023-05-31",
-            "max_tokens": 1000,
-            "temperature": 0.0,
-            "messages": [{"role": "user", "content": prompt}]
+            "messages": [{"role": "user", "content": [{"text": prompt}]}],
+            "inferenceConfig": {"max_new_tokens": 1000, "temperature": 0.0}
         })
 
         response = client.invoke_model(
@@ -72,15 +71,10 @@ Return ONLY valid JSON matching this schema:
             contentType="application/json",
             accept="application/json"
         )
-        
+
         response_body = json.loads(response["body"].read().decode("utf-8"))
-        content_text = response_body["content"][0]["text"].strip()
-        # Clean JSON markdown fences if present
-        if content_text.startswith("```json"):
-            content_text = content_text[7:]
-        if content_text.endswith("```"):
-            content_text = content_text[:-3]
-        return json.loads(content_text.strip())
+        content_text = response_body["output"]["message"]["content"][0]["text"].strip()
+        return parse_json_from_llm(content_text)
 
     except (BotoCoreError, ClientError, Exception) as e:
         logger.warning(f"Bedrock invocation unavailable ({e}), using local rule fallback.")
@@ -92,7 +86,7 @@ def extract_beep_signature_fallback(manual_text: str, source_url: str = "") -> D
     Deterministic regex and keyword extractor for offline development.
     """
     text_lower = manual_text.lower()
-    
+
     interval = 30.0
     if "45 seconds" in text_lower or "45s" in text_lower:
         interval = 45.0
@@ -109,6 +103,8 @@ def extract_beep_signature_fallback(manual_text: str, source_url: str = "") -> D
         "signature_interval_s": interval,
         "signature_duration_ms": 80.0,
         "peak_freq_hz": 3200.0,
+        "freq_tolerance_hz": 350.0,
+        "verification_status": "cadence_verified_frequency_nominal",
         "device_class": device_class,
         "brand": "Kidde" if "kidde" in text_lower else "First Alert",
         "meaning": meaning,
@@ -122,6 +118,7 @@ def append_to_beepdb(row_data: Dict[str, Any], csv_path: str = CSV_PATH) -> bool
     """Appends an extracted acoustic signature to codes.csv."""
     headers = [
         "signature_interval_s", "signature_duration_ms", "peak_freq_hz",
+        "freq_tolerance_hz", "verification_status",
         "device_class", "brand", "meaning", "severity", "action", "source_url"
     ]
     with open(csv_path, mode="a", newline="", encoding="utf-8") as f:

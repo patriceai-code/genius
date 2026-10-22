@@ -34,7 +34,10 @@ The `beepdb` database provides deterministic acoustic signatures mapping hardwar
 ---
 
 ## Verification Protocol
-Every entry in this database is cross-verified using:
-1. Manufacturer technical documentation or user manual.
-2. Verified audio spectrum playback (calibrated frequency and duration pulse checks).
-3. The 10/10 held-out diagnosis gate test suite.
+Every entry in this database is cataloged using a two-tier verification methodology:
+1. **Cadence & Meaning Verification:** Sourced directly from official manufacturer safety manuals, quick-start guides, or engineering technical sheets (cited in the table above).
+2. **Frequency Tolerance & Acoustic Verification:**
+   - Household smoke and CO alarms use standard piezo-ceramic acoustic elements that typically resonate between 3.0 kHz and 3.5 kHz, while digital appliances (microwaves, refrigerators) resonate between 1.5 kHz and 2.5 kHz.
+   - Because physical piezos drift and room acoustic reflections alter perceived spectra, `beepdb` models frequencies with explicit tolerance bands (`freq_tolerance_hz`).
+   - Entries with physical audio recordings (e.g., Kidde, X-Sense) are marked as `verified_physical_recording` with measured spectral peaks and pulse durations, while others are marked as `cadence_verified_frequency_nominal` pending additional physical calibration recordings.
+
